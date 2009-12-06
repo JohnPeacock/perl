@@ -1591,6 +1591,7 @@
 #define check_uni		S_check_uni
 #define force_next		S_force_next
 #define force_version		S_force_version
+#define force_package_version	S_force_package_version
 #define force_word		S_force_word
 #define tokeq			S_tokeq
 #define readpipe_override	S_readpipe_override
@@ -4000,6 +4001,7 @@
 #define check_uni()		S_check_uni(aTHX)
 #define force_next(a)		S_force_next(aTHX_ a)
 #define force_version(a,b)	S_force_version(aTHX_ a,b)
+#define force_package_version(a,b)	S_force_package_version(aTHX_ a,b)
 #define force_word(a,b,c,d,e)	S_force_word(aTHX_ a,b,c,d,e)
 #define tokeq(a)		S_tokeq(aTHX_ a)
 #define readpipe_override()	S_readpipe_override(aTHX)

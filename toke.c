@@ -2130,6 +2130,72 @@ S_force_version(pTHX_ char *s, int guessing)
 }
 
 /*
+ * S_force_package_version
+ * Forces the next token to be a version number.
+ * If the next token appears to be an invalid version number, (e.g. "v2b"),
+ * and if "guessing" is TRUE, then no new token is created (and the caller
+ * must use an alternative parsing method).
+ */
+
+STATIC char *
+S_force_package_version(pTHX_ char *s, int guessing)
+{
+    dVAR;
+    OP *version = NULL;
+    char *d;
+#ifdef PERL_MAD
+    I32 startoff = s - SvPVX(PL_linestr);
+#endif
+
+    PERL_ARGS_ASSERT_FORCE_VERSION;
+
+    s = SKIPSPACE1(s);
+
+    d = s;
+    if (*d == 'v')
+	d++;
+    if (isDIGIT(*d)) {
+	while (isDIGIT(*d) || *d == '_' || *d == '.')
+	    d++;
+#ifdef PERL_MAD
+	if (PL_madskills) {
+	    start_force(PL_curforce);
+	    curmad('X', newSVpvn(s,d-s));
+	}
+#endif
+        if (*d == ';' || isSPACE(*d) || *d == '}' || !*d) {
+	    SV *ver = newSV(0);
+	    s = (char *)scan_version(s, ver, 0);
+	    version = newSVOP(OP_CONST, 0, ver);
+        }
+	else if (guessing) {
+#ifdef PERL_MAD
+	    if (PL_madskills) {
+		sv_free(PL_nextwhite);	/* let next token collect whitespace */
+		PL_nextwhite = 0;
+		s = SvPVX(PL_linestr) + startoff;
+	    }
+#endif
+	    return s;
+	}
+    }
+
+#ifdef PERL_MAD
+    if (PL_madskills && !version) {
+	sv_free(PL_nextwhite);	/* let next token collect whitespace */
+	PL_nextwhite = 0;
+	s = SvPVX(PL_linestr) + startoff;
+    }
+#endif
+    /* NOTE: The parser sees the package name and the VERSION swapped */
+    start_force(PL_curforce);
+    NEXTVAL_NEXTTOKE.opval = version;
+    force_next(WORD);
+
+    return s;
+}
+
+/*
  * S_tokeq
  * Tokenize a quoted string passed in as an SV.  It finds the next
  * chunk, up to end of string or a backslash.  It may make a new
@@ -6961,7 +7027,7 @@ Perl_yylex(pTHX)
 
 	case KEY_package:
 	    s = force_word(s,WORD,FALSE,TRUE,FALSE);
-	    s = force_version(s, FALSE);
+	    s = force_package_version(s, FALSE);
 	    OPERATOR(PACKAGE);
 
 	case KEY_pipe:

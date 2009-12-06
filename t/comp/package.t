@@ -76,9 +76,9 @@ print eval '__PACKAGE__' eq 'bug32562' ? "ok 14\n" : "not ok 14\n";
 
 my @variations = (
   '1.00',
-  '1.00_01',
+  '1.00001',
   'v1.2.3',
-  'v1.2_3',
+  'v1.2.3.4',
 );
 
 my $test_count = 15;
