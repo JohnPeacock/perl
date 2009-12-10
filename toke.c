@@ -2147,7 +2147,7 @@ S_force_package_version(pTHX_ char *s, int guessing)
     I32 startoff = s - SvPVX(PL_linestr);
 #endif
 
-    PERL_ARGS_ASSERT_FORCE_VERSION;
+    PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION;
 
     s = SKIPSPACE1(s);
 
