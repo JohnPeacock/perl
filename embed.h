@@ -636,6 +636,7 @@
 #define new_stackinfo		Perl_new_stackinfo
 #define scan_vstring		Perl_scan_vstring
 #define scan_version		Perl_scan_version
+#define prescan_version		Perl_prescan_version
 #define new_version		Perl_new_version
 #define upg_version		Perl_upg_version
 #define vverify			Perl_vverify
@@ -3037,6 +3038,7 @@
 #define new_stackinfo(a,b)	Perl_new_stackinfo(aTHX_ a,b)
 #define scan_vstring(a,b,c)	Perl_scan_vstring(aTHX_ a,b,c)
 #define scan_version(a,b,c)	Perl_scan_version(aTHX_ a,b,c)
+#define prescan_version(a,b,c,d,e,f)	Perl_prescan_version(aTHX_ a,b,c,d,e,f)
 #define new_version(a)		Perl_new_version(aTHX_ a)
 #define upg_version(a,b)	Perl_upg_version(aTHX_ a,b)
 #define vverify(a)		Perl_vverify(aTHX_ a)
