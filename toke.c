@@ -2142,42 +2142,20 @@ S_force_package_version(pTHX_ char *s, int guessing)
 {
     dVAR;
     OP *version = NULL;
-    char *d;
 #ifdef PERL_MAD
     I32 startoff = s - SvPVX(PL_linestr);
 #endif
 
     PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION;
 
-    s = SKIPSPACE1(s);
-
-    d = s;
-    if (*d == 'v')
-	d++;
-    if (isDIGIT(*d)) {
-	while (isDIGIT(*d) || *d == '_' || *d == '.')
-	    d++;
-#ifdef PERL_MAD
-	if (PL_madskills) {
-	    start_force(PL_curforce);
-	    curmad('X', newSVpvn(s,d-s));
-	}
-#endif
-        if (*d == ';' || isSPACE(*d) || *d == '}' || !*d) {
-	    SV *ver = newSV(0);
-	    s = (char *)scan_version(s, ver, 0);
-	    version = newSVOP(OP_CONST, 0, ver);
-        }
-	else if (guessing) {
-#ifdef PERL_MAD
-	    if (PL_madskills) {
-		sv_free(PL_nextwhite);	/* let next token collect whitespace */
-		PL_nextwhite = 0;
-		s = SvPVX(PL_linestr) + startoff;
-	    }
-#endif
-	    return s;
-	}
+    if (isVERSION(s,TRUE)) {
+	SV *ver = newSV(0);
+	s = (char *)scan_version(s, ver, 0);
+	version = newSVOP(OP_CONST, 0, ver);
+    }
+    else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
+	yyerror("Invalid strict version");
+	return s;
     }
 
 #ifdef PERL_MAD
@@ -5154,7 +5132,7 @@ Perl_yylex(pTHX)
 			PL_expect = XTERM;
 			/* This hack is to get the ${} in the message. */
 			PL_bufptr = s+1;
-			yyerror("syntax error");
+			yyerror("my syntax error");
 			break;
 		    }
 		    OPERATOR(HASHBRACK);

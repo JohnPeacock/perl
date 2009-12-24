@@ -4189,10 +4189,12 @@ Perl_prescan_version(pTHX_ const char *s, bool strict,
     int width = 3;
     int saw_period = 0;
     bool alpha = FALSE;
-    const char *d = s;
+    const char *d;
 
-    while (isSPACE(*d)) /* leading whitespace */
-	d++;
+    while (isSPACE(*s)) /* leading whitespace */
+	s++;
+
+    d = s;
 
     if (qv && isDIGIT(*d))
 	goto dotted_decimal_version;
@@ -4281,7 +4283,7 @@ dotted_decimal_version:
 	    saw_period++;
 	    d++; 		/* decimal point */
 	}
-	if (!isDIGIT(*d)) 	/* requires 1.[0-9] */
+	if (strict && !isDIGIT(*d) && d != s ) 	/* requires 1.[0-9] */
 	    return s;
 
 	while (isDIGIT(*d)) {
