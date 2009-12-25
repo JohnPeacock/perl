@@ -4189,12 +4189,7 @@ Perl_prescan_version(pTHX_ const char *s, bool strict,
     int width = 3;
     int saw_period = 0;
     bool alpha = FALSE;
-    const char *d;
-
-    while (isSPACE(*s)) /* leading whitespace */
-	s++;
-
-    d = s;
+    const char *d = s;
 
     if (qv && isDIGIT(*d))
 	goto dotted_decimal_version;
@@ -4208,6 +4203,8 @@ dotted_decimal_version:
 	if (strict && d[0] == '0' && ! d[1] == '.')
 	{
 	    /* no leading zeros allowed */
+	    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (no leading zeros)");
 	    return s;
 	}
 
@@ -4221,10 +4218,15 @@ dotted_decimal_version:
 	}
 	else
 	{
-	    if (strict) 	/* require v1.2.3 */
+	    if (strict) {
+		/* require v1.2.3 */
+		Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+			"Invalid strict version format (v1.2.3 required)");
 		return s;
-	    else
+	    }
+	    else {
 		goto version_prescan_success;
+	    }
 	}
 
 	{
@@ -4239,8 +4241,11 @@ dotted_decimal_version:
 			break;
 		}
 		if (*d == '_') {
-		    if (strict)
+		    if (strict) {
+			Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+				"Invalid strict version format (no underscores)");
 			return s;
+		    }
 		    if ( alpha )
 			Perl_croak(aTHX_ "Invalid version format (multiple underscores)");
 		    d++;
@@ -4258,8 +4263,12 @@ dotted_decimal_version:
 		j = 0;
 	    }
 	
-	    if (strict && i < 2)	/* requires v1.2.3 */
+	    if (strict && i < 2) {
+		/* requires v1.2.3 */
+		Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+			"Invalid strict version format (v1.2.3 required)");
 		return s;
+	    }
 	}
     } 					/* end if dotted-decimal */
     else
@@ -4268,6 +4277,8 @@ dotted_decimal_version:
 	if (d[0] == '0' && ! d[1] == '.')
 	{
 	    /* no leading zeros allowed */
+	    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (no leading zeros)");
 	    return s;
 	}
 
@@ -4283,23 +4294,33 @@ dotted_decimal_version:
 	    saw_period++;
 	    d++; 		/* decimal point */
 	}
-	if (strict && !isDIGIT(*d) && d != s ) 	/* requires 1.[0-9] */
+	if (strict && !isDIGIT(*d) && d != s ) {
+	    /* requires 1.[0-9] */
+	    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (1.[0-9] required)");
 	    return s;
+	}
 
 	while (isDIGIT(*d)) {
 	    d++;
 	    if (*d == '.' && isDIGIT(d[-1])) {
 		if (alpha)
 		    Perl_croak(aTHX_ "Invalid version format (underscores before decimal)");
-		if (strict)
+		if (strict) {
+		    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+			    "Invalid strict version format (v1.2.3 required)");
 		    return s;
+		}
 		d = (char *)s; 		/* start all over again */
 		qv = TRUE;
 		goto dotted_decimal_version;
 	    }
 	    if (*d == '_') {
-		if (strict)
+		if (strict) {
+		    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+			    "Invalid strict version format (no underscores)");
 		    return s;
+		}
 		if ( alpha )
 		    Perl_croak(aTHX_ "Invalid version format (multiple underscores)");
 		d++;

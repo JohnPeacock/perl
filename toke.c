@@ -2148,13 +2148,16 @@ S_force_package_version(pTHX_ char *s, int guessing)
 
     PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION;
 
+    while (isSPACE(*s)) /* leading whitespace */
+	s++;
+
     if (isVERSION(s,TRUE)) {
 	SV *ver = newSV(0);
 	s = (char *)scan_version(s, ver, 0);
 	version = newSVOP(OP_CONST, 0, ver);
     }
     else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
-	yyerror("Invalid strict version");
+	PL_bufptr = s;
 	return s;
     }
 
