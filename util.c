@@ -4287,7 +4287,9 @@ dotted_decimal_version:
 
 	if (!isDIGIT(*d) && d[0] != ';')
 	{
-	    /* a version may be required, but let the caller decide */
+	    /* version required */
+	    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (version required)");
 	    return s;
 	}
 

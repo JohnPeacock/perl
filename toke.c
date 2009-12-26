@@ -2158,7 +2158,7 @@ S_force_package_version(pTHX_ char *s)
     }
     else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
 	PL_bufptr = s;
-	yyerror("Invalid strict version format (version required)");
+	yyerror("syntax error"); /* version required */
 	return s;
     }
 
