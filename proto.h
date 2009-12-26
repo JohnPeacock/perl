@@ -5807,7 +5807,7 @@ STATIC char*	S_force_version(pTHX_ char *s, int guessing)
 #define PERL_ARGS_ASSERT_FORCE_VERSION	\
 	assert(s)
 
-STATIC char*	S_force_package_version(pTHX_ char *s, int guessing)
+STATIC char*	S_force_package_version(pTHX_ char *s)
 			__attribute__nonnull__(pTHX_1);
 #define PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION	\
 	assert(s)

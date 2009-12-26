@@ -90,17 +90,17 @@ for my $v ( @variations ) {
 }
 
 eval q/package Foo Bar/;
-$@ =~ /syntax error/ or print "not ";
+$@ =~ /Invalid strict version format/ or print "not ";
 print "ok $test_count\n"; $test_count++;
 
 eval q/package Foo 1a/;
-$@ =~ /syntax error/ or print "not ";
+$@ =~ /Invalid strict version format/ or print "not ";
 print "ok $test_count\n"; $test_count++;
 
 eval q/package Foo v/;
-$@ =~ /syntax error/ or print "not ";
+$@ =~ /Invalid strict version format/ or print "not ";
 print "ok $test_count\n"; $test_count++;
 
 eval q/package Foo $foo/;
-$@ =~ /syntax error/ or print "not ";
+$@ =~ /Invalid strict version format/ or print "not ";
 print "ok $test_count\n"; $test_count++;

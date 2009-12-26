@@ -2138,7 +2138,7 @@ S_force_version(pTHX_ char *s, int guessing)
  */
 
 STATIC char *
-S_force_package_version(pTHX_ char *s, int guessing)
+S_force_package_version(pTHX_ char *s)
 {
     dVAR;
     OP *version = NULL;
@@ -2158,6 +2158,7 @@ S_force_package_version(pTHX_ char *s, int guessing)
     }
     else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
 	PL_bufptr = s;
+	yyerror("Invalid strict version format (version required)");
 	return s;
     }
 
@@ -5135,7 +5136,7 @@ Perl_yylex(pTHX)
 			PL_expect = XTERM;
 			/* This hack is to get the ${} in the message. */
 			PL_bufptr = s+1;
-			yyerror("my syntax error");
+			yyerror("syntax error");
 			break;
 		    }
 		    OPERATOR(HASHBRACK);
@@ -7008,7 +7009,7 @@ Perl_yylex(pTHX)
 
 	case KEY_package:
 	    s = force_word(s,WORD,FALSE,TRUE,FALSE);
-	    s = force_package_version(s, FALSE);
+	    s = force_package_version(s);
 	    OPERATOR(PACKAGE);
 
 	case KEY_pipe:
