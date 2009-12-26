@@ -4279,7 +4279,7 @@ dotted_decimal_version:
 	if (d[0] == '.' && isDIGIT(d[1])) {
 	    if (strict) {
 		Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
-			"Invalid strict version format (leading 0 required)");
+			"Invalid strict version format (0 before decimal required)");
 		return s;
 	    }
 	    goto version_saw_decimal;
