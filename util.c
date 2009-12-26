@@ -4274,6 +4274,14 @@ dotted_decimal_version:
     else
     {					/* decimal versions */
 
+	if (!isDIGIT(*d) && d[0] != ';')
+	{
+	    /* no leading zeros allowed */
+	    Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (version required)");
+	    return s;
+	}
+
 	if (d[0] == '0' && ! d[1] == '.')
 	{
 	    /* no leading zeros allowed */
