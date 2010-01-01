@@ -4202,7 +4202,7 @@ Perl_prescan_version(pTHX_ const char *s, bool strict,
 	d++;
 
 dotted_decimal_version:
-	if (strict && d[0] == '0' && ! d[1] == '.')
+	if (strict && d[0] == '0' && d[1] != '.')
 	{
 	    /* no leading zeros allowed */
 	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
@@ -4275,6 +4275,12 @@ dotted_decimal_version:
     } 					/* end if dotted-decimal */
     else
     {					/* decimal versions */
+	if (strict && d[0] == '0' && d[1] != '.') {
+	    /* no leading zeros allowed */
+	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
+		    "Invalid strict version format (no leading zeros)");
+	    return s;
+	}
 
 	if (d[0] == '.' && isDIGIT(d[1])) {
 	    if (strict) {
