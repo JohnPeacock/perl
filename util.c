@@ -4196,10 +4196,15 @@ Perl_prescan_version(pTHX_ const char *s, bool strict, char **errstr,
     if (qv && isDIGIT(*d))
 	goto dotted_decimal_version;
 
-    if (*d == 'v' && isDIGIT(d[1]) ) /* explicit v-string */
-    {
-	qv = TRUE;
+    if (*d == 'v') { /* explicit v-string */
 	d++;
+	if (isDIGIT(*d)) {
+	    qv = TRUE;
+	}
+	else { /* degenerate v-string */
+	    /* requires v1.2.3 */
+	    BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
+	}
 
 dotted_decimal_version:
 	if (strict && d[0] == '0' && d[1] != '.') {
@@ -4219,7 +4224,7 @@ dotted_decimal_version:
 	{
 	    if (strict) {
 		/* require v1.2.3 */
-		BADVERSION(s,errstr,"Invalid version format (v1.2.3 required)");
+		BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 	    }
 	    else {
 		goto version_prescan_success;
@@ -4234,8 +4239,9 @@ dotted_decimal_version:
 		while (isDIGIT(*d)) {
 		    d++; j++;
 		    /* maximum 3 digits between decimal */
-		    if (strict && j == 3)
-			break;
+		    if (strict && j > 3) {
+			BADVERSION(s,errstr,"Invalid version format (maximum 3 digits between decimals)");
+		    }
 		}
 		if (*d == '_') {
 		    if (strict) {
@@ -4262,7 +4268,7 @@ dotted_decimal_version:
 	
 	    if (strict && i < 2) {
 		/* requires v1.2.3 */
-		BADVERSION(s,errstr,"Invalid version format (v1.2.3 required)");
+		BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 	    }
 	}
     } 					/* end if dotted-decimal */
@@ -4277,7 +4283,7 @@ dotted_decimal_version:
 	    if (strict) {
 		BADVERSION(s,errstr,"Invalid version format (0 before decimal required)");
 	    }
-	    goto version_saw_decimal;
+	    goto decimal_mantissa;
 	}
 
 	if (strict && !isDIGIT(*d) && d[0] != ';')
@@ -4299,7 +4305,7 @@ dotted_decimal_version:
 	    BADVERSION(s,errstr,"Invalid version format (alpha without decimal)");
 	}
 
-version_saw_decimal:
+decimal_mantissa:
 	if (*d == '.')
 	{
 	    saw_decimal++;
@@ -4317,7 +4323,7 @@ version_saw_decimal:
 		    BADVERSION(s,errstr,"Invalid version format (underscores before decimal)");
 		}
 		if (strict) {
-		    BADVERSION(s,errstr,"Invalid version format (v1.2.3 required)");
+		    BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 		}
 		d = (char *)s; 		/* start all over again */
 		qv = TRUE;
