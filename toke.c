@@ -2130,15 +2130,12 @@ S_force_version(pTHX_ char *s, int guessing)
 }
 
 /*
- * S_force_package_version
- * Forces the next token to be a version number.
- * If the next token appears to be an invalid version number, (e.g. "v2b"),
- * and if "guessing" is TRUE, then no new token is created (and the caller
- * must use an alternative parsing method).
+ * S_force_strict_version
+ * Forces the next token to be a version number using strict syntax rules.
  */
 
 STATIC char *
-S_force_package_version(pTHX_ char *s)
+S_force_strict_version(pTHX_ char *s)
 {
     dVAR;
     OP *version = NULL;
@@ -2146,12 +2143,12 @@ S_force_package_version(pTHX_ char *s)
     I32 startoff = s - SvPVX(PL_linestr);
 #endif
 
-    PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION;
+    PERL_ARGS_ASSERT_FORCE_STRICT_VERSION;
 
     while (isSPACE(*s)) /* leading whitespace */
 	s++;
 
-    if (isVERSION(s,TRUE)) {
+    if (is_STRICT_VERSION(s)) {
 	SV *ver = newSV(0);
 	s = (char *)scan_version(s, ver, 0);
 	version = newSVOP(OP_CONST, 0, ver);
@@ -7009,7 +7006,7 @@ Perl_yylex(pTHX)
 
 	case KEY_package:
 	    s = force_word(s,WORD,FALSE,TRUE,FALSE);
-	    s = force_package_version(s);
+	    s = force_strict_version(s);
 	    OPERATOR(PACKAGE);
 
 	case KEY_pipe:
