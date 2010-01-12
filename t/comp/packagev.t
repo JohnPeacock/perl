@@ -20,36 +20,32 @@ while (<DATA>) {
     # First handle the 'package NAME VERSION' case
     if ($p eq 'fail') {
 	eval "package withversion $v";
-	like($@, qr/syntax error/, "package withversion $v -> syntax error");
-	like($warning, qr/$match/m, "Invalid version format ($match)");
+	like($@, qr/$match/, "package withversion $v -> syntax error");
     }
     else {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";
 	ok($ok, "package withversion $v");
     }
+    
 
     # Now check the version->new("V") case
     my $ver;
     eval qq/\$ver = version->new("$v")/;
     if ($nq eq 'fail') {
-	like($@, qr/syntax error/, qq/version->new("$v") -> syntax error/);
-	like($warning, qr/$match/m, "Invalid version format ($match)");
+	like($@, qr/$match/, "Invalid version format ($match)");
     }
     else {
-	unlike($@, qr/syntax error/, qq/version->new("$v") -> not syntax error/);
-	isnt($warning, "no warnings ($match)");
+	isnt($@, qq/version->new("$v") $match/);
     }
 
     # Now check the version->new(V) case
     my $ver;
     eval qq/\$ver = version->new($v)/;
     if ($nq eq 'fail') {
-	like($@, qr/syntax error/, qq/version->new("$v") -> syntax error/);
-	like($warning, qr/$match/m, "Invalid version format ($match)");
+	like($@, qr/$match/m, "Invalid version format ($match)");
     }
     else {
-	unlike($@, qr/syntax error/, qq/version->new("$v") -> not syntax error/);
-	isnt($warning, "no warnings ($match)");
+	isnt($@, qq/version->new("$v") $match/);
     }
 }
 

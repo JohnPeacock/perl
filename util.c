@@ -4184,6 +4184,7 @@ Perl_getcwd_sv(pTHX_ register SV *sv)
 
 const char *
 Perl_prescan_version(pTHX_ const char *s, bool strict,
+		     const char **errstr,
 		     bool *sqv, int *ssaw_decimal, int *swidth, bool *salpha) {
     bool qv = (sqv ? *sqv : FALSE);
     int width = 3;
@@ -4203,17 +4204,13 @@ Perl_prescan_version(pTHX_ const char *s, bool strict,
 	}
 	else { /* degenerate v-string */
 	    /* requires v1.2.3 */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (dotted-decimal versions require at least three parts)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 	}
 
 dotted_decimal_version:
 	if (strict && d[0] == '0' && d[1] != '.') {
 	    /* no leading zeros allowed */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (no leading zeros)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (no leading zeros)");
 	}
 
 	while (isDIGIT(*d)) 	/* integer part */
@@ -4228,9 +4225,7 @@ dotted_decimal_version:
 	{
 	    if (strict) {
 		/* require v1.2.3 */
-		Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-			"Invalid version format (dotted-decimal versions require at least three parts)");
-		return s;
+		BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 	    }
 	    else {
 		goto version_prescan_success;
@@ -4246,25 +4241,23 @@ dotted_decimal_version:
 		    d++; j++;
 		    /* maximum 3 digits between decimal */
 		    if (strict && j > 3) {
-			Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-				"Invalid version format (maximum 3 digits between decimals)");
-			return s;
+			BADVERSION(s,errstr,"Invalid version format (maximum 3 digits between decimals)");
 		    }
 		}
 		if (*d == '_') {
 		    if (strict) {
-			Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-				"Invalid version format (no underscores)");
-			return s;
+			BADVERSION(s,errstr,"Invalid version format (no underscores)");
 		    }
-		    if ( alpha )
-			Perl_croak(aTHX_ "Invalid version format (multiple underscores)");
+		    if ( alpha ) {
+			BADVERSION(s,errstr,"Invalid version format (multiple underscores)");
+		    }
 		    d++;
 		    alpha = TRUE;
 		}
 		else if (*d == '.') {
-		    if (alpha)
-			Perl_croak(aTHX_ "Invalid version format (underscores before decimal)");
+		    if (alpha) {
+			BADVERSION(s,errstr,"Invalid version format (underscores before decimal)");
+		    }
 		    saw_decimal++;
 		    d++;
 		}
@@ -4276,9 +4269,7 @@ dotted_decimal_version:
 	
 	    if (strict && i < 2) {
 		/* requires v1.2.3 */
-		Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-			"Invalid version format (dotted-decimal versions require at least three parts)");
-		return s;
+		BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 	    }
 	}
     } 					/* end if dotted-decimal */
@@ -4286,16 +4277,12 @@ dotted_decimal_version:
     {					/* decimal versions */
 	if (strict && d[0] == '0' && d[1] != '.') {
 	    /* no leading zeros allowed */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (no leading zeros)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (no leading zeros)");
 	}
 
 	if (d[0] == '.' && isDIGIT(d[1])) {
 	    if (strict) {
-		Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-			"Invalid version format (0 before decimal required)");
-		return s;
+		BADVERSION(s,errstr,"Invalid version format (0 before decimal required)");
 	    }
 	    goto decimal_mantissa;
 	}
@@ -4303,24 +4290,20 @@ dotted_decimal_version:
 	if (strict && !isDIGIT(*d) && d[0] != ';')
 	{
 	    /* version required */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (version required)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (version required)");
 	}
 
 	if (d[0] == '0' && ! d[1] == '.')
 	{
 	    /* no leading zeros allowed */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (no leading zeros)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (no leading zeros)");
 	}
 
 	while (isDIGIT(*d)) 	/* integer part */
 	    d++;
 
 	if (d[0] == '_' && isDIGIT(d[1])) {
-	    Perl_croak(aTHX_ "Invalid version format (alpha without decimal)");
+	    BADVERSION(s,errstr,"Invalid version format (alpha without decimal)");
 	}
 
 decimal_mantissa:
@@ -4331,20 +4314,17 @@ decimal_mantissa:
 	}
 	if (strict && !isDIGIT(*d) && d != s ) {
 	    /* requires 1.[0-9] */
-	    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-		    "Invalid version format (1.[0-9] required)");
-	    return s;
+	    BADVERSION(s,errstr,"Invalid version format (1.[0-9] required)");
 	}
 
 	while (isDIGIT(*d)) {
 	    d++;
 	    if (*d == '.' && isDIGIT(d[-1])) {
-		if (alpha)
-		    Perl_croak(aTHX_ "Invalid version format (underscores before decimal)");
+		if (alpha) {
+		    BADVERSION(s,errstr,"Invalid version format (underscores before decimal)");
+		}
 		if (strict) {
-		    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-			    "Invalid version format (dotted-decimal versions require at least three parts)");
-		    return s;
+		    BADVERSION(s,errstr,"Invalid version format (dotted-decimal versions require at least three parts)");
 		}
 		d = (char *)s; 		/* start all over again */
 		qv = TRUE;
@@ -4352,12 +4332,11 @@ decimal_mantissa:
 	    }
 	    if (*d == '_') {
 		if (strict) {
-		    Perl_ck_warner(aTHX_ packWARN(WARN_SYNTAX),
-			    "Invalid version format (no underscores)");
-		    return s;
+		    BADVERSION(s,errstr,"Invalid version format (no underscores)");
 		}
-		if ( alpha )
-		    Perl_croak(aTHX_ "Invalid version format (multiple underscores)");
+		if ( alpha ) {
+		    BADVERSION(s,errstr,"Invalid version format (multiple underscores)");
+		}
 		d++;
 		alpha = TRUE;
 	    }
@@ -4365,8 +4344,9 @@ decimal_mantissa:
     }
 
 version_prescan_success:
-    if ( alpha && saw_decimal && width == 0 )
-	Perl_croak(aTHX_ "Invalid version format (misplaced _ in number)");
+    if ( alpha && saw_decimal && width == 0 ) {
+	BADVERSION(s,errstr,"Invalid version format (misplaced _ in number)");
+    }
     if (sqv)
 	*sqv = qv;
     if (swidth)
@@ -4406,6 +4386,7 @@ Perl_scan_version(pTHX_ const char *s, SV *rv, bool qv)
     const char *start;
     const char *pos;
     const char *last;
+    const char *errstr = NULL;
     int saw_decimal = 0;
     int width = 3;
     bool alpha = FALSE;
@@ -4424,7 +4405,10 @@ Perl_scan_version(pTHX_ const char *s, SV *rv, bool qv)
     while (isSPACE(*s)) /* leading whitespace is OK */
 	s++;
 
-    last = prescan_version(s, FALSE, &qv, &saw_decimal, &width, &alpha);
+    last = prescan_version(s, FALSE, &errstr, &qv, &saw_decimal, &width, &alpha);
+    if (errstr)
+	Perl_croak(aTHX_ "%s", errstr);
+
     start = s;
     if (*s == 'v')
 	s++;
