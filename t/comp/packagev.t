@@ -6,7 +6,7 @@ BEGIN {
     require './test.pl';
 }
 
-plan tests => 33;
+plan tests => 20;
 
 use warnings qw/syntax/;
 # test: package NAME VERSION
@@ -15,11 +15,9 @@ while (<DATA>) {
     chomp;
     my ($v, $expected, $match) = split /\t+/;
     if ($expected eq 'fail') {
-	my $warning = "";
-	local $SIG{__WARN__} = sub { $warning .= $_[0] . "\n" };
+	no warnings 'reserved';
 	eval "package withversion $v";
-	like($@, qr/syntax error/, "package withversion $v -> syntax error");
-	like($warning, qr/$match/m, "strict version format ($match)");
+	like($@, qr/$match/m, "package withversion $v -> syntax error ($match)");
     }
     elsif ($expected eq 'pass') {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";

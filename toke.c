@@ -2145,20 +2145,22 @@ S_force_package_version(pTHX_ char *s)
 #ifdef PERL_MAD
     I32 startoff = s - SvPVX(PL_linestr);
 #endif
+    char *errstr = NULL;
 
     PERL_ARGS_ASSERT_FORCE_PACKAGE_VERSION;
 
     while (isSPACE(*s)) /* leading whitespace */
 	s++;
 
-    if (isVERSION(s,TRUE)) {
+    if (isSTRICTVERSION(s,&errstr)) {
 	SV *ver = newSV(0);
 	s = (char *)scan_version(s, ver, 0);
 	version = newSVOP(OP_CONST, 0, ver);
     }
     else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
 	PL_bufptr = s;
-	yyerror("syntax error"); /* version required */
+	if (errstr)
+	    yyerror(errstr); /* version required */
 	return s;
     }
 
