@@ -6,7 +6,7 @@ BEGIN {
     require './test.pl';
 }
 
-plan tests => 125;
+plan tests => 22 * 3;
 
 use warnings qw/syntax/;
 # test: package NAME VERSION
@@ -18,34 +18,38 @@ while (<DATA>) {
     local $SIG{__WARN__} = sub { $warning .= $_[0] . "\n" };
 
     # First handle the 'package NAME VERSION' case
+    $withversion::VERSION = undef;
     if ($p eq 'fail') {
 	eval "package withversion $v";
-	like($@, qr/$match/, "package withversion $v -> syntax error");
+	like($@, qr/$match/, "package withversion $v -> syntax error ($match)");
     }
     else {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";
-	ok($ok, "package withversion $v");
+	ok($ok, "package withversion $v")
+          or diag( $@ ? $@ : "and \$VERSION = $withversion::VERSION");
     }
     
 
     # Now check the version->new("V") case
-    my $ver;
+    my $ver = undef;
     eval qq/\$ver = version->new("$v")/;
     if ($nq eq 'fail') {
-	like($@, qr/$match/, "Invalid version format ($match)");
+	like($@, qr/$match/, qq{version->new("$v") -> invalid format ($match)})
+          or diag( $@ ? $@ : "and \$ver = $ver" );
     }
     else {
-	isnt($@, qq/version->new("$v") $match/);
+	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
     }
 
     # Now check the version->new(V) case
-    my $ver;
+    $ver = undef; 
     eval qq/\$ver = version->new($v)/;
     if ($nq eq 'fail') {
-	like($@, qr/$match/m, "Invalid version format ($match)");
+	like($@, qr/$match/m, qq{version->new($v) -> invalid format ($match)})
+          or diag( $@ ? $@ : "and \$ver = $ver" );
     }
     else {
-	isnt($@, qq/version->new("$v") $match/);
+	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
     }
 }
 
@@ -79,7 +83,7 @@ __DATA__
 01.0203		fail	pass	pass	no leading zeros
 1.		fail	pass	pass	1.\[0-9] required
 .1		fail	pass	pass	0 before decimal required
-Bar		fail	fail	fail	version required
+bar		fail	fail	fail	version required
 1a		fail	fail	fail	1.\[0-9] required
 v		fail	fail	fail	dotted-decimal versions require at least three parts
 $foo		fail	fail	fail	version required
