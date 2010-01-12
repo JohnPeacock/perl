@@ -2142,7 +2142,7 @@ S_force_strict_version(pTHX_ char *s)
 #ifdef PERL_MAD
     I32 startoff = s - SvPVX(PL_linestr);
 #endif
-    char *errstr = NULL;
+    const char *errstr = NULL;
 
     PERL_ARGS_ASSERT_FORCE_STRICT_VERSION;
 

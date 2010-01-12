@@ -665,8 +665,7 @@ typedef U32 line_t;
 
 #define BADVERSION(a,b,c) \
 	if (b) { \
-	    *b = savepvs(c); \
-	    SAVEFREEPV(*b); \
+	    *b = c; \
 	} \
 	return a;
 

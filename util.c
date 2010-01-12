@@ -4183,7 +4183,8 @@ Perl_getcwd_sv(pTHX_ register SV *sv)
 #define VERSION_MAX 0x7FFFFFFF
 
 const char *
-Perl_prescan_version(pTHX_ const char *s, bool strict, char **errstr,
+Perl_prescan_version(pTHX_ const char *s, bool strict,
+		     const char **errstr,
 		     bool *sqv, int *ssaw_decimal, int *swidth, bool *salpha) {
     bool qv = (sqv ? *sqv : FALSE);
     int width = 3;
@@ -4385,7 +4386,7 @@ Perl_scan_version(pTHX_ const char *s, SV *rv, bool qv)
     const char *start;
     const char *pos;
     const char *last;
-    char *errstr = NULL;
+    const char *errstr = NULL;
     int saw_decimal = 0;
     int width = 3;
     bool alpha = FALSE;
@@ -4406,7 +4407,7 @@ Perl_scan_version(pTHX_ const char *s, SV *rv, bool qv)
 
     last = prescan_version(s, FALSE, &errstr, &qv, &saw_decimal, &width, &alpha);
     if (errstr)
-	Perl_croak(aTHX_ errstr);
+	Perl_croak(aTHX_ "%s", errstr);
 
     start = s;
     if (*s == 'v')
