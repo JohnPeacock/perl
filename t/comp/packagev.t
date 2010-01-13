@@ -6,7 +6,10 @@ BEGIN {
     require './test.pl';
 }
 
-plan tests => 26 * 5;
+my @lines = <DATA>;
+my $count = grep { $_ !~ /^#/ } @lines;
+
+plan tests => $count * 5;
 
 use warnings qw/syntax/;
 use version;
@@ -15,15 +18,14 @@ use version;
 
 my $skip_regex_tests = 0;
 
-while (<DATA>) {
+LINE:
+for (@lines) {
     chomp;
     my ($v, $p, $nq, $n, $match) = split /\t+/;
-    # XXX remove this now? -- dagolden, 2010-01-13
+    # comments in data section are just diagnostics
     if ($v =~ /^#/) {
 	diag $v;
-	if ($v =~ /trouble/) {
-	    $skip_regex_tests = 1;
-	}
+        next LINE;
     }
     my $warning = "";
     local $SIG{__WARN__} = sub { $warning .= $_[0] . "\n" };
@@ -60,12 +62,15 @@ while (<DATA>) {
     # Now check the version->new(V) case
     $ver = undef; 
     eval qq/\$ver = version->new($v)/;
-    if ($nq eq 'fail') {
+    if ($n eq 'fail') {
 	like($@, qr/$match/m, qq{... and unquoted version->new($v) has same error})
           or diag( $@ ? $@ : "and \$ver = $ver" );
     }
-    else {
+    elsif ($n eq 'pass') {
 	is($@, "", qq{... and version->new($v) is ok});
+    }
+    else {
+        pass( "... skipping version->new($v)" );
     }
 }
 
@@ -87,7 +92,10 @@ while (<DATA>) {
 #
 # For any column with 'pass', the tests makes sure that no warning/error
 # was thrown.  For any column with 'fail', the tests make sure that the
-# error thrown matches the regex in the last column.
+# error thrown matches the regex in the last column.  The unquoted column
+# may also have 'na' indicating that it's pointless to test as behavior
+# is subject to the perl parser before a stringifiable value is available
+# to version->new
 #
 # If all columns are marked 'pass', the regex column is left empty.
 #
@@ -101,22 +109,27 @@ __DATA__
 42		pass	pass	pass
 0		pass	pass	pass
 0.0		pass	pass	pass
-01		fail	pass	pass	no leading zeros
-01.0203		fail	pass	pass	no leading zeros
-1.		fail	pass	pass	1.\[0-9] required
-.1		fail	pass	pass	0 before decimal required
 v1.2.3		pass	pass	pass
-v1.2		fail	pass	pass	dotted-decimal versions require at least three parts
 v1.2.3.4	pass	pass	pass
-1.2.3		fail	pass	pass	dotted-decimal versions require at least three parts
 v0.1.2		pass	pass	pass
 v0.0.0		pass	pass	pass
-v1		fail	pass	pass	dotted-decimal versions require at least three parts
+01		fail	pass	pass	no leading zeros
+01.0203		fail	pass	pass	no leading zeros
 v01		fail	pass	pass	no leading zeros
 v01.02.03	fail	pass	pass	no leading zeros
+1.		fail	pass	pass	1.\[0-9] required
+.1		fail	pass	pass	0 before decimal required
+1.02_03		fail	pass	pass	underscores
+1.2_3.4		fail	fail	fail	underscores
+v1.2_3		fail	pass	pass	underscores
+1.02_03_04	fail	fail	na	underscores
+v1.02_03	fail	pass	pass	underscores
+v1.2_3_4	fail	fail	fail	underscores
+v1.2		fail	pass	pass	dotted-decimal versions require at least three parts
+v1		fail	pass	pass	dotted-decimal versions require at least three parts
 v.1.2.3		fail	fail	fail	dotted-decimal versions require at least three parts
-v1.2345.6	fail	pass	pass	maximum 3 digits between decimals
-bar		fail	fail	fail	version required
-1a		fail	fail	fail	1.\[0-9] required
+1.2.3		fail	pass	pass	dotted-decimal versions require at least three parts
 v		fail	fail	fail	dotted-decimal versions require at least three parts
-$foo		fail	fail	fail	version required
+v1.2345.6	fail	pass	pass	maximum 3 digits between decimals
+bar		fail	fail	na	version required
+1a		fail	fail	na	1.\[0-9] required
