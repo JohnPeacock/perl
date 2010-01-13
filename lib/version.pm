@@ -72,14 +72,14 @@ my $LAX_DOTTED_DECIMAL_VERSION = qr/
 	v			# leading v required
 	${INTEGER_PART}
 	${DECIMAL_PART}{1,}	# one or more times
-	${ALPHA}{0,}		# with trailing optional alpha stanza(s)
+	${ALPHA}{0,1}		# with trailing optional alpha stanza
     )
   |				# or
     (?:
 	(?!v)			# no leading v allowed
 	${INTEGER_PART}
 	${DECIMAL_PART}{2,}	# repeating two or more times
-	${ALPHA}{0,}		# with trailing optional alpha stanza(s)
+	${ALPHA}{0,1}		# with trailing optional alpha stanza
     )
 )
 /x;
@@ -94,12 +94,12 @@ my $LAX_DECIMAL_VERSION = qr/
     (?:
 	${INTEGER_PART}
 	${DECIMAL_PART}
-	${ALPHA}{0,}		# with trailing optional alpha stanza(s)
+	${ALPHA}{0,1}		# with trailing optional alpha stanza
     )
 )
 /x;
 
-$LAX= qr/\A(?:${LAX_DECIMAL_VERSION}|${LAX_DOTTED_DECIMAL_VERSION}\z`) /x;
+$LAX= qr/\A(?:${LAX_DECIMAL_VERSION}|${LAX_DOTTED_DECIMAL_VERSION}\z) /x;
 
 # Preloaded methods go here.
 sub import {
