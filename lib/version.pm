@@ -4,7 +4,7 @@ package version;
 use 5.005_04;
 use strict;
 
-use vars qw(@ISA $VERSION $CLASS $STRICT $LAX $STRICT_Az $LAX_Az *declare *qv);
+use vars qw(@ISA $VERSION $CLASS $STRICT $LAX *declare *qv);
 
 $VERSION = 0.81;
 
@@ -64,13 +64,11 @@ my $STRICT_DECIMAL_VERSION =
 my $STRICT_DOTTED_DECIMAL_VERSION = 
     qr/ v $STRICT_INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
 
-# Complete strict version number syntax, including anchored form
+# Complete strict version number syntax -- should generally be used
+# anchored: qr/ \A $STRICT \z /x
 
 $STRICT =
     qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
-
-$STRICT_Az = 
-    qr/ \A $STRICT \z /x;
 
 #--------------------------------------------------------------------------#
 # Lax version regexp definitions
@@ -97,13 +95,11 @@ my $LAX_DOTTED_DECIMAL_VERSION =
 	$LAX_INTEGER_PART $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
     /x;
 
-# Complete lax version number syntax, including anchored form.
+# Complete lax version number syntax -- should generally be used
+# anchored: qr/ \A $LAX \z /x
 
 $LAX = 
     qr/ $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
-
-$LAX_Az = 
-    qr/ \A $LAX \z /x;
 
 #--------------------------------------------------------------------------#
 
@@ -150,7 +146,7 @@ sub import {
     }
 }
 
-sub is_strict	{ defined $_[0] && $_[0] =~ $STRICT_Az }
-sub is_lax	{ defined $_[0] && $_[0] =~ $LAX_Az }
+sub is_strict	{ defined $_[0] && $_[0] =~ qr/ \A $STRICT \z /x }
+sub is_lax	{ defined $_[0] && $_[0] =~ qr/ \A $LAX \z /x }
 
 1;
