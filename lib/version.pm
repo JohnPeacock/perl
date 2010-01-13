@@ -43,7 +43,7 @@ my $STRICT_DECIMAL_PART = qr/
 /x;
 
 my $DOTTED_DECIMAL_VERSION = qr/
-(?
+(?:
     v				# leading v required
     ${INTEGER_PART}		# mandatory decimal
     ${STRICT_DECIMAL_PART}{2,}	# repeating 2 or more times
