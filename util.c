@@ -4636,7 +4636,7 @@ Perl_new_version(pTHX_ SV *ver)
 	    char * const version = savepvn( (const char*)mg->mg_ptr, len);
 	    sv_setpvn(rv,version,len);
 	    /* this is for consistency with the pure Perl class */
-	    if ( *version != 'v' ) 
+	    if ( isDIGIT(*version) ) 
 		sv_insert(rv, 0, 0, "v", 1);
 	    Safefree(version);
 	}

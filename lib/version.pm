@@ -92,13 +92,15 @@ my $LAX_DECIMAL_VERSION =
 
 # Lax dotted-decimal version number.  Distinguished by having either
 # leading "v" or at least three non-alpha parts.  Alpha part is only
-# permitted if there are at least two non-alpha parts.
+# permitted if there are at least two non-alpha parts. Strangely
+# enough, without the leading "v", Perl takes .1.2 to mean v0.1.2,
+# so when there is no "v", the leading part is optional
 
 my $LAX_DOTTED_DECIMAL_VERSION = 
     qr/
 	v $LAX_INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
 	|
-	$LAX_INTEGER_PART $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
+	$LAX_INTEGER_PART? $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
     /x;
 
 # Complete lax version number syntax -- should generally be used

@@ -7,7 +7,7 @@ BEGIN {
 }
 
 # XXX remove this later -- dagolden, 2010-01-13
-local *STDERR = *STDOUT;
+# local *STDERR = *STDOUT;
 
 my @syntax_cases = (
     'package Foo',
@@ -140,7 +140,7 @@ v0.0.0		pass	pass	pass
 v01		fail	pass	pass	no leading zeros
 v01.02.03	fail	pass	pass	no leading zeros
 .1		fail	pass	pass	0 before decimal required
-#.1.2		fail	pass	pass	0 before decimal required
+.1.2		fail	pass	pass	0 before decimal required
 1.		fail	pass	pass	fractional part required
 1.a		fail	fail	na	fractional part required
 1._		fail	fail	na	fractional part required
