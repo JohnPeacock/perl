@@ -26,7 +26,13 @@ my $FRACTION_PART = qr/\.[0-9]+/;
 my $STRICT_INTEGER_PART = qr/0|[1-9][0-9]*/;
 
 # First part of either decimal or dotted-decimal lax version number.
-# Unsigned integer, but allowing leading zeros.
+# Unsigned integer, but allowing leading zeros.  Always interpreted
+# as decimal.  However, some forms of the resulting syntax give odd
+# results if used as ordinary Perl expressions, due to how perl treats 
+# octals.  E.g. 
+#   version->new("010" ) == 10
+#   version->new( 010  ) == 8
+#   version->new( 010.2) == 82  # "8" . "2"
 
 my $LAX_INTEGER_PART = qr/[0-9]+/;
 
