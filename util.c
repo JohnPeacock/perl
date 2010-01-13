@@ -4275,9 +4275,15 @@ dotted_decimal_version:
     } 					/* end if dotted-decimal */
     else
     {					/* decimal versions */
-	if (strict && d[0] == '0' && d[1] != '.') {
-	    /* no leading zeros allowed */
-	    BADVERSION(s,errstr,"Invalid version format (no leading zeros)");
+	if (strict && d[0] == '0' && d[1]) {
+	    if (d[1] == ';' || isSPACE(d[1]) || d[1] == '}') {
+		d++;
+		goto version_prescan_success;
+	    }
+	    else if ( d[1] != '.') {
+		/* no leading zeros allowed */
+		BADVERSION(s,errstr,"Invalid version format (no leading zeros)");
+	    }
 	}
 
 	if (d[0] == '.' && isDIGIT(d[1])) {

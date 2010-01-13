@@ -2154,7 +2154,7 @@ S_force_strict_version(pTHX_ char *s)
 	s = (char *)scan_version(s, ver, 0);
 	version = newSVOP(OP_CONST, 0, ver);
     }
-    else if (*s != ';' && (s = SKIPSPACE1(s), (*s != ';' ))) {
+    else if ( (*s != ';' && *s != '}' ) && (s = SKIPSPACE1(s), (*s != ';' && *s !='}' ))) {
 	PL_bufptr = s;
 	if (errstr)
 	    yyerror(errstr); /* version required */
