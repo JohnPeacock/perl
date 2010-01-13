@@ -21,7 +21,7 @@ my $skip_regex_tests = 0;
 LINE:
 for (@lines) {
     chomp;
-    my ($v, $p, $nq, $n, $match) = split /\t+/;
+    my ($v, $package, $quoted, $bare, $match) = split /\t+/;
     # comments in data section are just diagnostics
     if ($v =~ /^#/) {
 	diag $v;
@@ -33,44 +33,45 @@ for (@lines) {
 
     # First handle the 'package NAME VERSION' case
     $withversion::VERSION = undef;
-    if ($p eq 'fail') {
+    if ($package eq 'fail') {
 	eval "package withversion $v";
 	like($@, qr/$match/, "package withversion $v -> syntax error ($match)");
-	unlike($v, $version::STRICT_Az, qq{... and "$v" should also fail STRICT regex});
+	ok(! version::is_strict($v), qq{... and "$v" should also fail STRICT regex});
     }
     else {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";
 	ok($ok, "package withversion $v")
           or diag( $@ ? $@ : "and \$VERSION = $withversion::VERSION");
-	like($v, $version::STRICT_Az, qq{... and "$v" should pass STRICT regex});
+	ok( version::is_strict($v), qq{... and "$v" should pass STRICT regex});
     }
     
 
     # Now check the version->new("V") case
     my $ver = undef;
     eval qq/\$ver = version->new("$v")/;
-    if ($nq eq 'fail') {
+    if ($quoted eq 'fail') {
 	like($@, qr/$match/, qq{version->new("$v") -> invalid format ($match)})
           or diag( $@ ? $@ : "and \$ver = $ver" );
-	unlike($v, $version::LAX_Az, qq{... and "$v" should fail LAX regex});
+	ok( ! version::is_lax($v), qq{... and "$v" should fail LAX regex});
     }
     else {
 	is($@, "", qq{version->new("$v")});
-	like($v, $version::LAX_Az, qq{... and "$v" should pass LAX regex});
+	ok( version::is_lax($v), qq{... and "$v" should pass LAX regex});
     }
 
-    # Now check the version->new(V) case
+    # Now check the version->new(V) case, unless we're skipping it
+    if ( $bare eq 'na' ) {
+        pass( "... skipping version->new($v)" );
+	next LINE;
+    }
     $ver = undef; 
     eval qq/\$ver = version->new($v)/;
-    if ($n eq 'fail') {
+    if ($bare eq 'fail') {
 	like($@, qr/$match/m, qq{... and unquoted version->new($v) has same error})
           or diag( $@ ? $@ : "and \$ver = $ver" );
     }
-    elsif ($n eq 'pass') {
-	is($@, "", qq{... and version->new($v) is ok});
-    }
     else {
-        pass( "... skipping version->new($v)" );
+	is($@, "", qq{... and version->new($v) is ok});
     }
 }
 

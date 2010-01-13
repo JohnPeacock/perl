@@ -150,4 +150,7 @@ sub import {
     }
 }
 
+sub is_strict	{ defined $_[0] && $_[0] =~ $STRICT_Az }
+sub is_lax	{ defined $_[0] && $_[0] =~ $LAX_Az }
+
 1;
