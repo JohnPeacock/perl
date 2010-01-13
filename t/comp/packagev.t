@@ -23,13 +23,13 @@ while (<DATA>) {
     if ($p eq 'fail') {
 	eval "package withversion $v";
 	like($@, qr/$match/, "package withversion $v -> syntax error ($match)");
-	unlike($v, qr/$version::STRICT/, "Doesn't match STRICT regex");
+	unlike($v, qr/$version::STRICT/, qq{... and "$v" should also fail STRICT regex});
     }
     else {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";
 	ok($ok, "package withversion $v")
           or diag( $@ ? $@ : "and \$VERSION = $withversion::VERSION");
-	like($v, qr/$version::STRICT/, "Matches STRICT regex");
+	like($v, qr/$version::STRICT/, qq{... and "$v" should pass STRICT regex});
     }
     
 
@@ -39,22 +39,22 @@ while (<DATA>) {
     if ($nq eq 'fail') {
 	like($@, qr/$match/, qq{version->new("$v") -> invalid format ($match)})
           or diag( $@ ? $@ : "and \$ver = $ver" );
-	unlike($v, qr/$version::LAX/, "Doesn't match LAX regex");
+	unlike($v, qr/$version::LAX/, qq{... and "$v" should fail LAX regex});
     }
     else {
 	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
-	like($v, qr/$version::LAX/, "Matches LAX regex");
+	like($v, qr/$version::LAX/, qq{... and "$v" should pass LAX regex});
     }
 
     # Now check the version->new(V) case
     $ver = undef; 
     eval qq/\$ver = version->new($v)/;
     if ($nq eq 'fail') {
-	like($@, qr/$match/m, qq{version->new($v) -> invalid format ($match)})
+	like($@, qr/$match/m, qq{... and unquoted version->new($v) has same error})
           or diag( $@ ? $@ : "and \$ver = $ver" );
     }
     else {
-	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
+	isnt($@, qq/version->new("$v") $match/, qq{... and version->new($v) is ok});
     }
 }
 
