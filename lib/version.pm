@@ -10,59 +10,102 @@ $VERSION = 0.81;
 
 $CLASS = 'version';
 
-# First part of either decimal or dotted-decimal version number.  Unsigned
-# integer with no leading zeroes (except for zero itself) to avoid
-# confusion with octal.
-my $INTEGER_PART = qr/0|[1-9][0-9]*/;
+#--------------------------------------------------------------------------#
+# Version regexp components
+#--------------------------------------------------------------------------#
 
-# Fraction part of a decimal version number.
+# Fraction part of a decimal version number.  This is a common part of
+# both strict and lax decimal versions
+
 my $FRACTION_PART = qr/\.[0-9]+/;
 
-# Strict decimal version number.
-my $STRICT_DECIMAL_VERSION = qr/ $INTEGER_PART $FRACTION_PART? /x;
+# First part of either decimal or dotted-decimal strict version number.
+# Unsigned integer with no leading zeroes (except for zero itself) to
+# avoid confusion with octal.
 
-# Second and subsequent part of a strict dotted-decimal version number.  Leading
-# zeroes are permitted, and the number is always decimal.  Limited to
-# three digits to avoid overflow when converting to decimal form and
-# also avoid problematic style with excessive leading zeroes.
+my $STRICT_INTEGER_PART = qr/0|[1-9][0-9]*/;
+
+# First part of either decimal or dotted-decimal lax version number.
+# Unsigned integer, but allowing leading zeros.
+
+my $LAX_INTEGER_PART = qr/[0-9]+/;
+
+# Second and subsequent part of a strict dotted-decimal version number.
+# Leading zeroes are permitted, and the number is always decimal.
+# Limited to three digits to avoid overflow when converting to decimal
+# form and also avoid problematic style with excessive leading zeroes.
+
 my $STRICT_DOTTED_DECIMAL_PART = qr/\.[0-9]{1,3}/;
 
-# Strict dotted-decimal version number.  Must have both leading "v" and at least
-# three parts, to avoid confusion with decimal syntax.
-my $STRICT_DOTTED_DECIMAL_VERSION = qr/ v $INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
+# Second and subsequent part of a lax dotted-decimal version number.
+# Leading zeroes are permitted, and the number is always decimal.  No
+# limit on the numerical value or number of digits, so there is the
+# possibility of overflow when converting to decimal form.
 
-# Complete strict version number syntax.
-$STRICT =
-	qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
-$STRICT_Az = qr/ \A $STRICT \z /x;
-
-# Alpha suffix part of lax version number syntax.  Acts like a dotted-decimal
-# part.
-my $LAX_ALPHA_PART = qr/_[0-9]+/;
-
-# Lax decimal version number.  Just like the strict one except for
-# allowing an alpha suffix.
-my $LAX_DECIMAL_VERSION =
-	qr/ $INTEGER_PART (?: $FRACTION_PART $LAX_ALPHA_PART? )? /x;
-
-# Second and subsequent part of a lax dotted-decimal version number.  Leading
-# zeroes are permitted, and the number is always decimal.  No limit on
-# the numerical value or number of digits, so there is the possibility
-# of overflow when converting to decimal form.
 my $LAX_DOTTED_DECIMAL_PART = qr/\.[0-9]+/;
 
-# Lax dotted-decimal version number.  Distinguished by having either leading
-# "v" or at least three non-alpha parts.  Alpha part is only permitted
-# if there are at least two non-alpha parts.
-my $LAX_DOTTED_DECIMAL_VERSION = qr/
-	v $INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
-	|
-	$INTEGER_PART $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
-/x;
+# Alpha suffix part of lax version number syntax.  Acts like a
+# dotted-decimal part.
 
-# Complete lax version number syntax.
-$LAX = qr/ $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
-$LAX_Az = qr/ \A $LAX \z /x;
+my $LAX_ALPHA_PART = qr/_[0-9]+/;
+
+#--------------------------------------------------------------------------#
+# Strict version regexp definitions
+#--------------------------------------------------------------------------#
+
+# Strict decimal version number.
+
+my $STRICT_DECIMAL_VERSION = 
+    qr/ $STRICT_INTEGER_PART $FRACTION_PART? /x;
+
+# Strict dotted-decimal version number.  Must have both leading "v" and
+# at least three parts, to avoid confusion with decimal syntax.
+
+my $STRICT_DOTTED_DECIMAL_VERSION = 
+    qr/ v $STRICT_INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
+
+# Complete strict version number syntax, including anchored form
+
+$STRICT =
+    qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
+
+$STRICT_Az = 
+    qr/ \A $STRICT \z /x;
+
+#--------------------------------------------------------------------------#
+# Lax version regexp definitions
+#--------------------------------------------------------------------------#
+
+# Lax decimal version number.  Just like the strict one except for
+# allowing an alpha suffix or allowing a leading or trailing
+# decimal-point 
+
+my $LAX_DECIMAL_VERSION =
+    qr/ $LAX_INTEGER_PART (?: \. | $FRACTION_PART $LAX_ALPHA_PART? )?
+	|
+	$FRACTION_PART $LAX_ALPHA_PART?
+    /x;
+
+# Lax dotted-decimal version number.  Distinguished by having either
+# leading "v" or at least three non-alpha parts.  Alpha part is only
+# permitted if there are at least two non-alpha parts.
+
+my $LAX_DOTTED_DECIMAL_VERSION = 
+    qr/
+	v $LAX_INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
+	|
+	$LAX_INTEGER_PART $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
+    /x;
+
+# Complete lax version number syntax, including anchored form.
+
+$LAX = 
+    qr/ $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
+
+$LAX_Az = 
+    qr/ \A $LAX \z /x;
+
+#--------------------------------------------------------------------------#
 
 # Preloaded methods go here.
 sub import {
