@@ -6,7 +6,7 @@ use strict;
 
 use vars qw(@ISA $VERSION $CLASS $STRICT $LAX *declare *qv);
 
-$VERSION = 0.78;
+$VERSION = 0.81;
 
 $CLASS = 'version';
 
@@ -14,7 +14,7 @@ $CLASS = 'version';
 
 my $INTEGER_PART = qr/
 (?:
-    0(?=[.])			# 0 but only if followed by a period
+    0				# 0
   |				# or
     [1-9]			# 1-9 followed by
     [0-9]{0,}			# zero or more digits
@@ -50,7 +50,7 @@ my $DOTTED_DECIMAL_VERSION = qr/
 )
 /x;
 
-$STRICT = qr/(?:${DECIMAL_VERSION}|${DOTTED_DECIMAL_VERSION})/;
+$STRICT = qr/\A(?:${DECIMAL_VERSION}|${DOTTED_DECIMAL_VERSION}\z)/x;
 
 # Define LAX version parsing
 
@@ -99,7 +99,7 @@ my $LAX_DECIMAL_VERSION = qr/
 )
 /x;
 
-$LAX= qr/(?:${LAX_DECIMAL_VERSION}|${LAX_DOTTED_DECIMAL_VERSION})/x;
+$LAX= qr/\A(?:${LAX_DECIMAL_VERSION}|${LAX_DOTTED_DECIMAL_VERSION}\z`) /x;
 
 # Preloaded methods go here.
 sub import {
