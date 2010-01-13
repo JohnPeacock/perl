@@ -4,102 +4,65 @@ package version;
 use 5.005_04;
 use strict;
 
-use vars qw(@ISA $VERSION $CLASS $STRICT $LAX *declare *qv);
+use vars qw(@ISA $VERSION $CLASS $STRICT $LAX $STRICT_Az $LAX_Az *declare *qv);
 
 $VERSION = 0.81;
 
 $CLASS = 'version';
 
-# Define STRICT version parsing
+# First part of either decimal or dotted-decimal version number.  Unsigned
+# integer with no leading zeroes (except for zero itself) to avoid
+# confusion with octal.
+my $INTEGER_PART = qr/0|[1-9][0-9]*/;
 
-my $INTEGER_PART = qr/
-(?:
-    0				# 0
-  |				# or
-    [1-9]			# 1-9 followed by
-    [0-9]{0,}			# zero or more digits
-)
-/x;
+# Fraction part of a decimal version number.
+my $FRACTION_PART = qr/\.[0-9]+/;
 
-my $DECIMAL_PART = qr/
-(?:				# decimal part
-    [.]				# literal decimal point
-    [0-9]{1,}			# one or more digits
-)
-/x;
+# Strict decimal version number.
+my $STRICT_DECIMAL_VERSION = qr/ $INTEGER_PART $FRACTION_PART? /x;
 
-my $DECIMAL_VERSION = qr/
-(?:
-    ${INTEGER_PART}		# mandatory
-    ${DECIMAL_PART}{0,1}	# optional
-)
-/x;
+# Second and subsequent part of a strict dotted-decimal version number.  Leading
+# zeroes are permitted, and the number is always decimal.  Limited to
+# three digits to avoid overflow when converting to decimal form and
+# also avoid problematic style with excessive leading zeroes.
+my $STRICT_DOTTED_DECIMAL_PART = qr/\.[0-9]{1,3}/;
 
-my $STRICT_DECIMAL_PART = qr/
-(?:				# repeated part
-    [.]				# literal decimal point
-    [0-9]{1,3}			# followed by one to three digits
-)
-/x;
+# Strict dotted-decimal version number.  Must have both leading "v" and at least
+# three parts, to avoid confusion with decimal syntax.
+my $STRICT_DOTTED_DECIMAL_VERSION = qr/ v $INTEGER_PART $STRICT_DOTTED_DECIMAL_PART{2,} /x;
 
-my $DOTTED_DECIMAL_VERSION = qr/
-(?:
-    v				# leading v required
-    ${INTEGER_PART}		# mandatory decimal
-    ${STRICT_DECIMAL_PART}{2,}	# repeating 2 or more times
-)
-/x;
+# Complete strict version number syntax.
+$STRICT =
+	qr/ $STRICT_DECIMAL_VERSION | $STRICT_DOTTED_DECIMAL_VERSION /x;
+$STRICT_Az = qr/ \A $STRICT \z /x;
 
-$STRICT = qr/\A(?:${DECIMAL_VERSION}|${DOTTED_DECIMAL_VERSION}\z)/x;
+# Alpha suffix part of lax version number syntax.  Acts like a dotted-decimal
+# part.
+my $LAX_ALPHA_PART = qr/_[0-9]+/;
 
-# Define LAX version parsing
+# Lax decimal version number.  Just like the strict one except for
+# allowing an alpha suffix.
+my $LAX_DECIMAL_VERSION =
+	qr/ $INTEGER_PART (?: $FRACTION_PART $LAX_ALPHA_PART? )? /x;
 
-my $ALPHA = qr/
-(?:
-    [_]				# literal underscore
-    [0-9]{1,}			# followed by one or more digits
-)
-/x;
+# Second and subsequent part of a lax dotted-decimal version number.  Leading
+# zeroes are permitted, and the number is always decimal.  No limit on
+# the numerical value or number of digits, so there is the possibility
+# of overflow when converting to decimal form.
+my $LAX_DOTTED_DECIMAL_PART = qr/\.[0-9]+/;
 
+# Lax dotted-decimal version number.  Distinguished by having either leading
+# "v" or at least three non-alpha parts.  Alpha part is only permitted
+# if there are at least two non-alpha parts.
 my $LAX_DOTTED_DECIMAL_VERSION = qr/
-(?:
-    (?:
-	v			# leading v required
-	${INTEGER_PART}
-    )
-  |				# or
-    (?:
-	v			# leading v required
-	${INTEGER_PART}
-	${DECIMAL_PART}{1,}	# one or more times
-	${ALPHA}{0,1}		# with trailing optional alpha stanza
-    )
-  |				# or
-    (?:
-	(?!v)			# no leading v allowed
-	${INTEGER_PART}
-	${DECIMAL_PART}{2,}	# repeating two or more times
-	${ALPHA}{0,1}		# with trailing optional alpha stanza
-    )
-)
+	v $INTEGER_PART (?: $LAX_DOTTED_DECIMAL_PART+ $LAX_ALPHA_PART? )?
+	|
+	$INTEGER_PART $LAX_DOTTED_DECIMAL_PART{2,} $LAX_ALPHA_PART?
 /x;
 
-my $LAX_DECIMAL_VERSION = qr/
-(?:
-    (?:
-	${INTEGER_PART}
-	${DECIMAL_PART}{0,1}	# optional
-    )
-  |				# or
-    (?:
-	${INTEGER_PART}
-	${DECIMAL_PART}
-	${ALPHA}{0,1}		# with trailing optional alpha stanza
-    )
-)
-/x;
-
-$LAX= qr/\A(?:${LAX_DECIMAL_VERSION}|${LAX_DOTTED_DECIMAL_VERSION}\z) /x;
+# Complete lax version number syntax.
+$LAX = qr/ $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
+$LAX_Az = qr/ \A $LAX \z /x;
 
 # Preloaded methods go here.
 sub import {

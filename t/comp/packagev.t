@@ -9,11 +9,21 @@ BEGIN {
 plan tests => 26 * 3;
 
 use warnings qw/syntax/;
+use version;
+
 # test: package NAME VERSION
+
+my $skip_regex_tests = 0;
 
 while (<DATA>) {
     chomp;
     my ($v, $p, $nq, $n, $match) = split /\t+/;
+    if ($v =~ /^#/) {
+	diag $v;
+	if ($v =~ /trouble/) {
+	    $skip_regex_tests = 1;
+	}
+    }
     my $warning = "";
     local $SIG{__WARN__} = sub { $warning .= $_[0] . "\n" };
     $match = defined $match ? $match : "";
@@ -23,13 +33,15 @@ while (<DATA>) {
     if ($p eq 'fail') {
 	eval "package withversion $v";
 	like($@, qr/$match/, "package withversion $v -> syntax error ($match)");
-	unlike($v, qr/$version::STRICT/, "Doesn't match STRICT regex");
+	ok($v !~ /$version::STRICT/, "Doesn't match STRICT regex") 
+	    unless $skip_regex_tests;
     }
     else {
 	my $ok = eval "package withversion $v; $v eq \$withversion::VERSION";
 	ok($ok, "package withversion $v")
           or diag( $@ ? $@ : "and \$VERSION = $withversion::VERSION");
-	like($v, qr/$version::STRICT/, "Matches STRICT regex");
+	ok($v =~ /$version::STRICT/, "Matches STRICT regex")
+	    unless $skip_regex_tests;
     }
     
 
@@ -39,11 +51,13 @@ while (<DATA>) {
     if ($nq eq 'fail') {
 	like($@, qr/$match/, qq{version->new("$v") -> invalid format ($match)})
           or diag( $@ ? $@ : "and \$ver = $ver" );
-	unlike($v, qr/$version::LAX/, "Doesn't match LAX regex");
+	ok($v !~ /$version::LAX/, "Doesn't match LAX regex")
+	    unless $skip_regex_tests;
     }
     else {
-	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
-	like($v, qr/$version::LAX/, "Matches LAX regex");
+	is($@, "", qq{version->new("$v")});
+	ok($v =~ /$version::LAX/, "Matches LAX regex")
+	    unless $skip_regex_tests;
     }
 
     # Now check the version->new(V) case
@@ -54,7 +68,7 @@ while (<DATA>) {
           or diag( $@ ? $@ : "and \$ver = $ver" );
     }
     else {
-	isnt($@, qq/version->new("$v") $match/, qq{version->new("$v")});
+	is($@, "", qq{version->new("$v")});
     }
 }
 
@@ -79,6 +93,9 @@ while (<DATA>) {
 # error thrown matches the regex in the last column.
 #
 # If all columns are marked 'pass', the regex column is left empty.
+#
+# If the DATA line begins with a # mark, it is used as a diag comment and
+# may also have side effects in the test (see the "Total garbage" block)
 __DATA__
 1.00		pass	pass	pass
 1.00001		pass	pass	pass
@@ -91,10 +108,6 @@ __DATA__
 01.0203		fail	pass	pass	no leading zeros
 1.		fail	pass	pass	1.\[0-9] required
 .1		fail	pass	pass	0 before decimal required
-bar		fail	fail	fail	version required
-1a		fail	fail	fail	1.\[0-9] required
-v		fail	fail	fail	dotted-decimal versions require at least three parts
-$foo		fail	fail	fail	version required
 v1.2.3		pass	pass	pass
 v1.2		fail	pass	pass	dotted-decimal versions require at least three parts
 v1.2.3.4	pass	pass	pass
@@ -106,3 +119,7 @@ v01		fail	pass	pass	no leading zeros
 v01.02.03	fail	pass	pass	no leading zeros
 v.1.2.3		fail	fail	fail	dotted-decimal versions require at least three parts
 v1.2345.6	fail	pass	pass	maximum 3 digits between decimals
+bar		fail	fail	fail	version required
+1a		fail	fail	fail	1.\[0-9] required
+v		fail	fail	fail	dotted-decimal versions require at least three parts
+$foo		fail	fail	fail	version required
