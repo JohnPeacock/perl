@@ -30,8 +30,8 @@ my $DECIMAL_PART = qr/
 
 my $DECIMAL_VERSION = qr/
 (?:
-    ${INTEGER_PART}		# both mandatory
-    ${DECIMAL_PART}
+    ${INTEGER_PART}
+    ${DECIMAL_PART}{0,1}	# optional
 )
 /x;
 

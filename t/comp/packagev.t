@@ -6,7 +6,7 @@ BEGIN {
     require './test.pl';
 }
 
-plan tests => 22 * 3;
+plan tests => 23 * 3;
 
 use warnings qw/syntax/;
 # test: package NAME VERSION
@@ -79,6 +79,7 @@ __DATA__
 1.00001		pass	pass	pass
 0.123		pass	pass	pass
 12.345		pass	pass	pass
+42		pass	pass	pass
 01		fail	pass	pass	no leading zeros
 01.0203		fail	pass	pass	no leading zeros
 1.		fail	pass	pass	1.\[0-9] required

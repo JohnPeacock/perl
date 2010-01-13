@@ -4306,6 +4306,10 @@ dotted_decimal_version:
 	    BADVERSION(s,errstr,"Invalid version format (alpha without decimal)");
 	}
 
+        if (*d == ';' || isSPACE(*d) || *d == '}' || !*d) {
+	    goto version_prescan_success;
+	}
+
 decimal_mantissa:
 	if (*d == '.')
 	{
