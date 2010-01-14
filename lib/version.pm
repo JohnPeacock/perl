@@ -105,9 +105,12 @@ my $LAX_DOTTED_DECIMAL_VERSION =
 
 # Complete lax version number syntax -- should generally be used
 # anchored: qr/ \A $LAX \z /x
+#
+# The string 'undef' is a special case to make for easier handling 
+# of return values from ExtUtils::MM->parse_version
 
 $LAX = 
-    qr/ $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
+    qr/ undef | $LAX_DECIMAL_VERSION | $LAX_DOTTED_DECIMAL_VERSION /x;
 
 #--------------------------------------------------------------------------#
 

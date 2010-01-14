@@ -4361,6 +4361,14 @@ dotted_decimal_version:
     }
 
 version_prescan_finish:
+    while (isSPACE(*d)) 
+	d++;
+
+    if (!isDIGIT(*d) && (! (!*d || *d == ';' || *d == '}') )) {
+	/* trailing non-numeric data */
+	BADVERSION(s,errstr,"Invalid version format (non-numeric data)");
+    }
+
     if (sqv)
 	*sqv = qv;
     if (swidth)
@@ -4420,8 +4428,12 @@ Perl_scan_version(pTHX_ const char *s, SV *rv, bool qv)
 	s++;
 
     last = prescan_version(s, FALSE, &errstr, &qv, &saw_decimal, &width, &alpha);
-    if (errstr)
-	Perl_croak(aTHX_ "%s", errstr);
+    if (errstr) {
+	/* "undef" is a special case and not an error */
+	if ( ! ( *s == 'u' && strEQ(s,"undef")) ) {
+	    Perl_croak(aTHX_ "%s", errstr);
+	}
+    }
 
     start = s;
     if (*s == 'v')

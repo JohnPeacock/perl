@@ -159,9 +159,11 @@ v1.2_3.4	fail	fail	fail	underscore
 v1.2		fail	pass	pass	dotted-decimal versions require at least three parts
 v0		fail	pass	pass	dotted-decimal versions require at least three parts
 v1		fail	pass	pass	dotted-decimal versions require at least three parts
-v.1.2.3		fail	fail	fail	dotted-decimal versions require at least three parts
-v		fail	fail	fail	dotted-decimal versions require at least three parts
+v.1.2.3		fail	fail	na	dotted-decimal versions require at least three parts
+v		fail	fail	na	dotted-decimal versions require at least three parts
 v1.2345.6	fail	pass	pass	maximum 3 digits between decimals
+undef		fail	pass	pass	non-numeric data
 1a		fail	fail	na	non-numeric data
+1.2a3		fail	fail	na	non-numeric data
 bar		fail	fail	na	non-numeric data
 _		fail	fail	na	non-numeric data
