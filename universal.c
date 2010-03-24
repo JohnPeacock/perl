@@ -574,10 +574,10 @@ XS(XS_version_stringify)
 	 croak_xs_usage(cv, "lobj, ...");
      SP -= items;
      {
-	  SV *	lobj;
+	  SV *	lobj = ST(0);
 
-	  if (sv_derived_from(ST(0), "version")) {
-	       lobj = SvRV(ST(0));
+	  if (sv_derived_from(lobj, "version") && SvROK(lobj)) {
+	       lobj = SvRV(lobj);
 	  }
 	  else
 	       Perl_croak(aTHX_ "lobj is not of type version");
@@ -597,10 +597,10 @@ XS(XS_version_numify)
 	 croak_xs_usage(cv, "lobj, ...");
      SP -= items;
      {
-	  SV *	lobj;
+	  SV *	lobj = ST(0);
 
-	  if (sv_derived_from(ST(0), "version")) {
-	       lobj = SvRV(ST(0));
+	  if (sv_derived_from(lobj, "version") && SvROK(lobj)) {
+	       lobj = SvRV(lobj);
 	  }
 	  else
 	       Perl_croak(aTHX_ "lobj is not of type version");
@@ -620,10 +620,10 @@ XS(XS_version_normal)
 	 croak_xs_usage(cv, "lobj, ...");
      SP -= items;
      {
-	  SV *	lobj;
+	  SV *	lobj = ST(0);
 
-	  if (sv_derived_from(ST(0), "version")) {
-	       lobj = SvRV(ST(0));
+	  if (sv_derived_from(lobj, "version") && SvROK(lobj)) {
+	       lobj = SvRV(lobj);
 	  }
 	  else
 	       Perl_croak(aTHX_ "lobj is not of type version");
@@ -643,10 +643,10 @@ XS(XS_version_vcmp)
 	 croak_xs_usage(cv, "lobj, ...");
      SP -= items;
      {
-	  SV *	lobj;
+	  SV *	lobj = ST(0);
 
-	  if (sv_derived_from(ST(0), "version")) {
-	       lobj = SvRV(ST(0));
+	  if (sv_derived_from(lobj, "version") && SvROK(lobj)) {
+	       lobj = SvRV(lobj);
 	  }
 	  else
 	       Perl_croak(aTHX_ "lobj is not of type version");
@@ -687,7 +687,7 @@ XS(XS_version_boolean)
     if (items < 1)
 	croak_xs_usage(cv, "lobj, ...");
     SP -= items;
-    if (sv_derived_from(ST(0), "version")) {
+    if (sv_derived_from(ST(0), "version") && SvROK(ST(0))) {
 	SV * const lobj = SvRV(ST(0));
 	SV * const rs = newSViv( vcmp(lobj,new_version(newSVpvs("0"))) );
 	mPUSHs(rs);
@@ -704,7 +704,7 @@ XS(XS_version_noop)
     dXSARGS;
     if (items < 1)
 	croak_xs_usage(cv, "lobj, ...");
-    if (sv_derived_from(ST(0), "version"))
+    if (sv_derived_from(ST(0), "version") && SvROK(ST(0))) 
 	Perl_croak(aTHX_ "operation not supported with version object");
     else
 	Perl_croak(aTHX_ "lobj is not of type version");
@@ -720,7 +720,7 @@ XS(XS_version_is_alpha)
     if (items != 1)
 	croak_xs_usage(cv, "lobj");
     SP -= items;
-    if (sv_derived_from(ST(0), "version")) {
+    if (sv_derived_from(ST(0), "version") && SvROK(ST(0))) {
 	SV * const lobj = ST(0);
 	if ( hv_exists(MUTABLE_HV(SvRV(lobj)), "alpha", 5 ) )
 	    XSRETURN_YES;
@@ -774,7 +774,7 @@ XS(XS_version_is_qv)
     if (items != 1)
 	croak_xs_usage(cv, "lobj");
     SP -= items;
-    if (sv_derived_from(ST(0), "version")) {
+    if (sv_derived_from(ST(0), "version") && SvROK(ST(0))) {
 	SV * const lobj = ST(0);
 	if ( hv_exists(MUTABLE_HV(SvRV(lobj)), "qv", 2 ) )
 	    XSRETURN_YES;
