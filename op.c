@@ -562,6 +562,7 @@ Perl_op_clear(pTHX_ OP *o)
 	    o->op_targ = 0;
 	    goto retry;
 	}
+    case OP_ENTERTRY:
     case OP_ENTEREVAL:	/* Was holding hints. */
 	o->op_targ = 0;
 	break;
@@ -5281,13 +5282,10 @@ S_looks_like_bool(pTHX_ const OP *o)
 	     && looks_like_bool(cLOGOPo->op_first->op_sibling));
 
 	case OP_NULL:
+	case OP_SCALAR:
 	    return (
 		o->op_flags & OPf_KIDS
 	    && looks_like_bool(cUNOPo->op_first));
-
-        case OP_SCALAR:
-            return looks_like_bool(cUNOPo->op_first);
-
 
 	case OP_ENTERSUB:
 
@@ -7748,8 +7746,14 @@ Perl_ck_shift(pTHX_ OP *o)
     PERL_ARGS_ASSERT_CK_SHIFT;
 
     if (!(o->op_flags & OPf_KIDS)) {
-	OP *argop = newUNOP(OP_RV2AV, 0,
-	    scalar(newGVOP(OP_GV, 0, CvUNIQUE(PL_compcv) ? PL_argvgv : PL_defgv)));
+	OP *argop;
+
+	if (!CvUNIQUE(PL_compcv)) {
+	    o->op_flags |= OPf_SPECIAL;
+	    return o;
+	}
+
+	argop = newUNOP(OP_RV2AV, 0, scalar(newGVOP(OP_GV, 0, PL_argvgv)));
 #ifdef PERL_MAD
 	OP * const oldo = o;
 	o = newUNOP(type, 0, scalar(argop));
@@ -8680,7 +8684,7 @@ Perl_peep(pTHX_ register OP *o)
             ){	
                 OP * nop = o;
                 OP * lop = o;
-                if (!(nop->op_flags && OPf_WANT_VOID)) {
+                if (!((nop->op_flags & OPf_WANT) == OPf_WANT_VOID)) {
                     while (nop && nop->op_next) {
                         switch (nop->op_next->op_type) {
                             case OP_NOT:
@@ -8698,7 +8702,7 @@ Perl_peep(pTHX_ register OP *o)
                         }
                     }            
                 }
-                if (lop->op_flags && OPf_WANT_VOID) {
+                if ((lop->op_flags & OPf_WANT) == OPf_WANT_VOID) {
                     if (fop->op_type == OP_PADHV || fop->op_type == OP_RV2HV) 
                         cLOGOP->op_first = opt_scalarhv(fop);
                     if (sop && (sop->op_type == OP_PADHV || sop->op_type == OP_RV2HV)) 

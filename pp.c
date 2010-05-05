@@ -207,7 +207,7 @@ PP(pp_rv2gv)
 	    }
 	    else {
 		if (PL_op->op_private & HINT_STRICT_REFS)
-		    DIE(aTHX_ S_no_symref_sv, sv, (SvCUR(sv)>32 ? "..." : ""), "a symbol");
+		    DIE(aTHX_ S_no_symref_sv, sv, (SvPOK(sv) && SvCUR(sv)>32 ? "..." : ""), "a symbol");
 		if ((PL_op->op_private & (OPpLVAL_INTRO|OPpDONT_INIT_GV))
 		    == OPpDONT_INIT_GV) {
 		    /* We are the target of a coderef assignment.  Return
@@ -237,7 +237,7 @@ Perl_softref2xv(pTHX_ SV *const sv, const char *const what,
 
     if (PL_op->op_private & HINT_STRICT_REFS) {
 	if (SvOK(sv))
-	    Perl_die(aTHX_ S_no_symref_sv, sv, (SvCUR(sv)>32 ? "..." : ""), what);
+	    Perl_die(aTHX_ S_no_symref_sv, sv, (SvPOK(sv) && SvCUR(sv)>32 ? "..." : ""), what);
 	else
 	    Perl_die(aTHX_ PL_no_usym, what);
     }
@@ -1030,7 +1030,7 @@ PP(pp_pow)
 			   on same algorithm as above */
 			register UV result = 1;
 			register UV base = baseuv;
-			const bool odd_power = (bool)(power & 1);
+			const bool odd_power = cBOOL(power & 1);
 			if (odd_power) {
 			    result *= base;
 			}
@@ -2485,14 +2485,14 @@ PP(pp_negate)
 
 PP(pp_not)
 {
-    dVAR; dSP; tryAMAGICunSET(not);
+    dVAR; dSP; tryAMAGICunSET_var(not_amg);
     *PL_stack_sp = boolSV(!SvTRUE(*PL_stack_sp));
     return NORMAL;
 }
 
 PP(pp_complement)
 {
-    dVAR; dSP; dTARGET; tryAMAGICun(compl);
+    dVAR; dSP; dTARGET; tryAMAGICun_var(compl_amg);
     {
       dTOPss;
       SvGETMAGIC(sv);
@@ -3439,6 +3439,7 @@ PP(pp_sprintf)
     dVAR; dSP; dMARK; dORIGMARK; dTARGET;
     if (SvTAINTED(MARK[1]))
 	TAINT_PROPER("sprintf");
+    SvTAINTED_off(TARG);
     do_sprintf(TARG, SP-MARK, MARK+1);
     TAINT_IF(SvTAINTED(TARG));
     SP = ORIGMARK;
@@ -5325,7 +5326,8 @@ PP(pp_shift)
 {
     dVAR;
     dSP;
-    AV * const av = MUTABLE_AV(POPs);
+    AV * const av = PL_op->op_flags & OPf_SPECIAL
+	? MUTABLE_AV(GvAV(PL_defgv)) : MUTABLE_AV(POPs);
     SV * const sv = PL_op->op_type == OP_SHIFT ? av_shift(av) : av_pop(av);
     EXTEND(SP, 1);
     assert (sv);
@@ -5418,12 +5420,15 @@ PP(pp_reverse)
 	    }
 	    else {
 		SV **begin = AvARRAY(av);
-		SV **end   = begin + AvFILLp(av);
 
-		while (begin < end) {
-		    register SV * const tmp = *begin;
-		    *begin++ = *end;
-		    *end--   = tmp;
+		if (begin) {
+		    SV **end   = begin + AvFILLp(av);
+
+		    while (begin < end) {
+			register SV * const tmp = *begin;
+			*begin++ = *end;
+			*end--   = tmp;
+		    }
 		}
 	    }
 	}

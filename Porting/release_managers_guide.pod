@@ -306,8 +306,8 @@ this line in README.vms needs special handling:
 Commit your changes:
 
     $ git st
-	$ git diff
-	  B<review the delta carefully>
+    $ git diff
+    B<review the delta carefully>
 
     $ git commit -a -m 'Bump the perl version in various places for 5.x.y'
 
@@ -361,11 +361,19 @@ XXX think of other configurations that need testing.
 
 I<You MAY SKIP this step for SNAPSHOT>
 
+L<perlport> has a section currently named I<Supported Platforms> that
+indicates which platforms are known to build in the current release.
+If necessary update the list and the indicated version number.
+
+=item *
+
+I<You MAY SKIP this step for SNAPSHOT>
+
 Update F<AUTHORS>, using the C<Porting/checkAUTHORS.pl> script, and if
 necessary, update the script to include new alias mappings for porters
 already in F<AUTHORS>
 
-	$ git log | perl Porting/checkAUTHORS.pl --acknowledged AUTHORS -
+    $ git log --pretty=fuller | perl Porting/checkAUTHORS.pl --acknowledged AUTHORS -
 
 =back
 
@@ -947,14 +955,18 @@ all the C<d> (deferred) flags to C<.> (needs review).
 
 I<You MUST SKIP this step for RC, BLEAD>
 
-If this was a major release (5.x.0), then create a new maint branch 
-based on the commit tagged as the current release and bump the version 
-in the blead branch in git, e.g. 5.12.0 to 5.13.0.
+If this was the first release of a new maint series, (5.x.0 where x is
+even), then create a new maint branch based on the commit tagged as
+the current release and bump the version in the blead branch in git,
+e.g. 5.12.0 to 5.13.0.
 
 [ XXX probably lots more stuff to do, including perldelta,
 C<lib/feature.pm> ]
 
-XXX need a git recipe
+Assuming you're using git 1.7.x or newer:
+
+    $ git checkout -b maint-5.12
+    $ git push origin -u maint-5.12
 
 =item *
 
@@ -987,6 +999,12 @@ e.g.
           5.8.9-RC1     2008-Nov-10
           5.8.9-RC2     2008-Dec-06
           5.8.9         2008-Dec-14
+
+=item *
+
+If necessary, send an email to C<perlbug-admin at perl.org> requesting
+that new version numbers be added to the RT fields C<Perl Version> and
+C<Fixed In>.
 
 =item *
 

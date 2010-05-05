@@ -110,6 +110,12 @@ Null SV pointer. (No longer available when C<PERL_CORE> is defined.)
 # define HAS_BOOL 1
 #endif
 
+/* a simple (bool) cast may not do the right thing: if bool is defined
+ * as char for example, then the cast from int is implementation-defined
+ */
+
+#define cBOOL(cbool) ((bool)!!(cbool))
+
 /* Try to figure out __func__ or __FUNCTION__ equivalent, if any.
  * XXX Should really be a Configure probe, with HAS__FUNCTION__
  *     and FUNCTION__ as results.
@@ -208,7 +214,7 @@ typedef U64TYPE U64;
  * GMTIME_MAX	GMTIME_MIN	LOCALTIME_MAX	LOCALTIME_MIN
  * HAS_CTIME64	HAS_LOCALTIME64	HAS_GMTIME64	HAS_DIFFTIME64
  * HAS_MKTIME64	HAS_ASCTIME64	HAS_GETADDRINFO	HAS_GETNAMEINFO
- * HAS_INETNTOP	HAS_INETPTON	CHARBITS
+ * HAS_INETNTOP	HAS_INETPTON	CHARBITS	HAS_PRCTL
  * Not (yet) used at top level, but mention them for metaconfig
  */
 
@@ -398,7 +404,7 @@ C<strncmp>).
 #endif
 
 #define memEQs(s1, l, s2) \
-	(sizeof(s2)-1 == l && memEQ(s1, (s2 ""), (sizeof(s2)-1)))
+	(sizeof(s2)-1 == l && memEQ(s1, ("" s2 ""), (sizeof(s2)-1)))
 #define memNEs(s1, l, s2) !memEQs(s1, l, s2)
 
 /*
@@ -457,6 +463,11 @@ Converts the specified character to lowercase.  Characters outside the
 US-ASCII (Basic Latin) range are viewed as not having any case.
 
 =cut
+
+NOTE:  Since some of these are macros, there is no check in those that the
+parameter is a char or U8.  This means that if called with a larger width
+parameter, casts can silently truncate and yield wrong results.
+
 */
 
 #define isALNUM(c)	(isALPHA(c) || isDIGIT(c) || (c) == '_')
@@ -498,8 +509,8 @@ US-ASCII (Basic Latin) range are viewed as not having any case.
 #   define isUPPER(c)	((c) >= 'A' && (c) <= 'Z')
 #   define isLOWER(c)	((c) >= 'a' && (c) <= 'z')
 #   define isALNUMC(c)	(isALPHA(c) || isDIGIT(c))
-#   define isASCII(c)	((c) <= 127)
-#   define isCNTRL(c)	((c) < ' ' || (c) == 127)
+#   define isASCII(c)	((U8) (c) <= 127)
+#   define isCNTRL(c)	((U8) (c) < ' ' || (c) == 127)
 #   define isGRAPH(c)	(isALNUM(c) || isPUNCT(c))
 #   define isPRINT(c)	(((c) >= 32 && (c) < 127))
 #   define isPUNCT(c)	(((c) >= 33 && (c) <= 47) || ((c) >= 58 && (c) <= 64)  || ((c) >= 91 && (c) <= 96) || ((c) >= 123 && (c) <= 126))

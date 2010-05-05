@@ -960,3 +960,21 @@ Use of := for an empty attribute list is deprecated at - line 36.
 Use of := for an empty attribute list is deprecated at - line 38.
 Use of := for an empty attribute list is deprecated at - line 41.
 Use of := for an empty attribute list is deprecated at - line 42.
+########
+# toke.c
+use warnings 'deprecated';
+my $a = 0123.456;
+my $b = 0x123.456;
+my $c = 0b101.010;
+my $d = 0123 . 456;
+no warnings 'deprecated';
+my $e = 0765.432;
+EXPECT
+Dot after octal literal is deprecated concatenation at - line 3.
+Dot after hexadecimal literal is deprecated concatenation at - line 4.
+Dot after binary literal is deprecated concatenation at - line 5.
+########
+# toke.c
+use warnings;
+my @c = 0x123..0x456;
+EXPECT

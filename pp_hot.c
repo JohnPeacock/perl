@@ -52,6 +52,7 @@ PP(pp_nextstate)
     TAINT_NOT;		/* Each statement is presumed innocent */
     PL_stack_sp = PL_stack_base + cxstack[cxstack_ix].blk_oldsp;
     FREETMPS;
+    PERL_ASYNC_CHECK();
     return NORMAL;
 }
 
@@ -98,6 +99,7 @@ PP(pp_gv)
 PP(pp_and)
 {
     dVAR; dSP;
+    PERL_ASYNC_CHECK();
     if (!SvTRUE(TOPs))
 	RETURN;
     else {
@@ -203,6 +205,7 @@ PP(pp_sassign)
 PP(pp_cond_expr)
 {
     dVAR; dSP;
+    PERL_ASYNC_CHECK();
     if (SvTRUEx(POPs))
 	RETURNOP(cLOGOP->op_other);
     else
@@ -213,6 +216,7 @@ PP(pp_unstack)
 {
     dVAR;
     I32 oldsave;
+    PERL_ASYNC_CHECK();
     TAINT_NOT;		/* Each statement is presumed innocent */
     PL_stack_sp = PL_stack_base + cxstack[cxstack_ix].blk_oldsp;
     FREETMPS;
@@ -416,6 +420,7 @@ PP(pp_preinc)
 PP(pp_or)
 {
     dVAR; dSP;
+    PERL_ASYNC_CHECK();
     if (SvTRUE(TOPs))
 	RETURN;
     else {
@@ -434,6 +439,7 @@ PP(pp_defined)
     const bool is_dor = (op_type == OP_DOR || op_type == OP_DORASSIGN);
 
     if (is_dor) {
+	PERL_ASYNC_CHECK();
         sv = TOPs;
         if (!sv || !SvANY(sv)) {
 	    if (op_type == OP_DOR)
@@ -657,8 +663,8 @@ PP(pp_aelemfast)
     SV** const svp = av_fetch(av, PL_op->op_private, lval);
     SV *sv = (svp ? *svp : &PL_sv_undef);
     EXTEND(SP, 1);
-    if (!lval && SvGMAGICAL(sv))	/* see note in pp_helem() */
-	sv = sv_mortalcopy(sv);
+    if (!lval && SvRMAGICAL(av) && SvGMAGICAL(sv)) /* see note in pp_helem() */
+	mg_get(sv);
     PUSHs(sv);
     RETURN;
 }
@@ -734,7 +740,7 @@ PP(pp_print)
 	RETURN;
     }
     if (!(io = GvIO(gv))) {
-        if ((GvEGV(gv)) && (io = GvIO(GvEGV(gv)))
+        if ((GvEGVx(gv)) && (io = GvIO(GvEGV(gv)))
 	    && (mg = SvTIED_mg((const SV *)io, PERL_MAGIC_tiedscalar)))
             goto had_magic;
 	if (ckWARN2(WARN_UNOPENED,WARN_CLOSED))
@@ -893,7 +899,7 @@ PP(pp_rv2av)
 		SV ** const svp = av_fetch(av, i, FALSE);
 		/* See note in pp_helem, and bug id #27839 */
 		SP[i+1] = svp
-		    ? SvGMAGICAL(*svp) ? sv_mortalcopy(*svp) : *svp
+		    ? SvGMAGICAL(*svp) ? (mg_get(*svp), *svp) : *svp
 		    : &PL_sv_undef;
 	    }
 	}
@@ -998,7 +1004,17 @@ PP(pp_aassign)
 	for (relem = firstrelem; relem <= lastrelem; relem++) {
 	    if ((sv = *relem)) {
 		TAINT_NOT;	/* Each item is independent */
-		*relem = sv_mortalcopy(sv);
+
+		/* Dear TODO test in t/op/sort.t, I love you.
+		   (It's relying on a panic, not a "semi-panic" from newSVsv()
+		   and then an assertion failure below.)  */
+		if (SvIS_FREED(sv)) {
+		    Perl_croak(aTHX_ "panic: attempt to copy freed scalar %p",
+			       (void*)sv);
+		}
+		/* Specifically *not* sv_mortalcopy(), as that will steal TEMPs,
+		   and we need a second copy of a temp here.  */
+		*relem = sv_2mortal(newSVsv(sv));
 	    }
 	}
     }
@@ -1021,7 +1037,8 @@ PP(pp_aassign)
 	    while (relem <= lastrelem) {	/* gobble up all the rest */
 		SV **didstore;
 		assert(*relem);
-		sv = newSVsv(*relem);
+		sv = newSV(0);
+		sv_setsv(sv, *relem);
 		*(relem++) = sv;
 		didstore = av_store(ary,i++,sv);
 		if (magic) {
@@ -1840,14 +1857,20 @@ PP(pp_helem)
 	    vivify_ref(*svp, PL_op->op_private & OPpDEREF);
     }
     sv = (svp ? *svp : &PL_sv_undef);
-    /* This makes C<local $tied{foo} = $tied{foo}> possible.
-     * Pushing the magical RHS on to the stack is useless, since
-     * that magic is soon destined to be misled by the local(),
-     * and thus the later pp_sassign() will fail to mg_get() the
-     * old value.  This should also cure problems with delayed
-     * mg_get()s.  GSAR 98-07-03 */
-    if (!lval && SvGMAGICAL(sv))
-	sv = sv_mortalcopy(sv);
+    /* Originally this did a conditional C<sv = sv_mortalcopy(sv)>; this
+     * was to make C<local $tied{foo} = $tied{foo}> possible.
+     * However, it seems no longer to be needed for that purpose, and
+     * introduced a new bug: stuff like C<while ($hash{taintedval} =~ /.../g>
+     * would loop endlessly since the pos magic is getting set on the
+     * mortal copy and lost. However, the copy has the effect of
+     * triggering the get magic, and losing it altogether made things like
+     * c<$tied{foo};> in void context no longer do get magic, which some
+     * code relied on. Also, delayed triggering of magic on @+ and friends
+     * meant the original regex may be out of scope by now. So as a
+     * compromise, do the get magic here. (The MGf_GSKIP flag will stop it
+     * being called too many times). */
+    if (!lval && SvRMAGICAL(hv) && SvGMAGICAL(sv))
+	mg_get(sv);
     PUSHs(sv);
     RETURN;
 }
@@ -2070,9 +2093,11 @@ PP(pp_subst)
     bool is_cow;
 #endif
     SV *nsv = NULL;
-
     /* known replacement string? */
     register SV *dstr = (pm->op_pmflags & PMf_CONST) ? POPs : NULL;
+
+    PERL_ASYNC_CHECK();
+
     if (PL_op->op_flags & OPf_STACKED)
 	TARG = POPs;
     else if (PL_op->op_private & OPpTARGET_MY)
@@ -2982,8 +3007,8 @@ PP(pp_aelem)
 	    vivify_ref(*svp, PL_op->op_private & OPpDEREF);
     }
     sv = (svp ? *svp : &PL_sv_undef);
-    if (!lval && SvGMAGICAL(sv))	/* see note in pp_helem() */
-	sv = sv_mortalcopy(sv);
+    if (!lval && SvRMAGICAL(av) && SvGMAGICAL(sv)) /* see note in pp_helem() */
+	mg_get(sv);
     PUSHs(sv);
     RETURN;
 }

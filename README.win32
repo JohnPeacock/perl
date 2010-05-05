@@ -75,10 +75,12 @@ The MS Platform SDK can be downloaded from http://www.microsoft.com/.
 The MinGW64 compiler is available at http://sourceforge.net/projects/mingw-w64.
 The latter is actually a cross-compiler targeting Win64. There's also a trimmed
 down compiler (no java, or gfortran) suitable for building perl available at:
-http://svn.ali.as/cpan/users/kmx/strawberry_gcc-toolchain/
+http://strawberryperl.com/package/kmx/64_gcctoolchain/mingw64-w64-20100123-kmx-v2.zip
 
 NOTE: If you're using a 32-bit compiler to build perl on a 64-bit Windows
 operating system, then you should set the WIN64 environment variable to "undef".
+Also, the trimmed down compiler only passes tests when USE_ITHREADS *= define
+(as opposed to undef) and when the CFG *= Debug line is commented out.
 
 This port fully supports MakeMaker (the set of modules that
 is used to build extensions to perl).  Therefore, you should be
@@ -458,7 +460,7 @@ Be sure to read the instructions near the top of the makefiles carefully.
 Type "dmake" (or "nmake" if you are using that make).
 
 This should build everything.  Specifically, it will create perl.exe,
-perl512.dll at the perl toplevel, and various other extension dll's
+perl513.dll at the perl toplevel, and various other extension dll's
 under the lib\auto directory.  If the build fails for any reason, make
 sure you have done the previous steps correctly.
 

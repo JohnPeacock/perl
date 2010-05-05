@@ -1211,6 +1211,10 @@ references can be weakened.
 with an assignment operator, which implies modifying the value itself.
 Perhaps you need to copy the value to a temporary, and repeat that.
 
+=item Character following "\\c" must be ASCII
+
+(F) In C<\cI<X>>, I<X> must be an ASCII character.
+
 =item Character in 'C' format wrapped in pack
 
 (W pack) You said
@@ -1419,6 +1423,12 @@ valid magic number.
 you have also specified an explicit size for the string.  See
 L<perlfunc/pack>.
 
+=item \\c%c" more clearly written simply as "%c
+
+(D deprecated) The C<\cI<X>> construct is intended to be a way to specify
+non-printable characters.  You used it for a printable one, which is better
+written as simply itself.
+
 =item Deep recursion on subroutine "%s"
 
 (W recursion) This subroutine has called itself (directly or indirectly)
@@ -1452,7 +1462,7 @@ there are neither package declarations nor a C<$VERSION>.
 long for Perl to handle.  You have to be seriously twisted to write code
 that triggers this error.
 
-=item Deprecated character(s) in \\N{...} starting at '%s'
+=item Deprecated character in \\N{...}; marked by <-- HERE  in \\N{%s<-- HERE %s
 
 (D deprecated) Just about anything is legal for the C<...> in C<\N{...}>.
 But starting in 5.12, non-reasonable ones that don't look like names are
@@ -1500,8 +1510,8 @@ do.  See L<perlfunc/require>.
 
 =item (Did you mean &%s instead?)
 
-(W) You probably referred to an imported subroutine &FOO as $FOO or some
-such.
+(W misc) You probably referred to an imported subroutine &FOO as $FOO or
+some such.
 
 =item (Did you mean "local" instead of "our"?)
 
@@ -1523,6 +1533,18 @@ you called it with no args and both C<$@> and C<$_> were empty.
 =item Document contains no data
 
 See Server error.
+
+=item Dot after %s literal is deprecated concatenation
+
+(D deprecated, syntax) You had something like 0x123.456 in your code.
+This is currently
+parsed as the hexadecimal number 0x123 concatenated with the decimal
+number 456, not the fraction 0x123 + 0x456/0x1000 -- we only support decimal
+fractions.  If you meant it to be a fraction, you'll need to use
+Math::BigFloat's from_hex (or friends).  If you meant it to be
+concatenation, just put spaces around the dot to make it clearer.  In
+5.14.0, we expect to change this to mean a hex fraction.  (Of course,
+everything above applies to octal and binary constants, too.)
 
 =item %s does not define %s::VERSION--version check failed
 
@@ -3426,13 +3448,6 @@ so it was not possible to set up some or all fixed-width byte-order
 conversion functions.  This is only a problem when you're using the
 '<' or '>' modifiers in (un)pack templates.  See L<perlfunc/pack>.
 
-=item Perl_pmflag() is deprecated, and will be removed from the XS API
-
-(D deprecated) XS code called the C function C<Perl_pmflag>. This was part of
-Perl's listed public API for extending or embedding the perl interpreter. It has
-now been removed from the public API, and will be removed in a future release,
-hence XS code should be re-written not to use it.
-
 =item Perl %s required--this is only version %s, stopped
 
 (F) The module in question uses features of a version of Perl more
@@ -4880,6 +4895,14 @@ modifier is not presently meaningful in substitutions.
 use the /g modifier.  Currently, /c is meaningful only when /g is
 used.  (This may change in the future.)
 
+=item Use of := for an empty attribute list is deprecated
+
+(D deprecated) The construction C<my $x := 42> currently
+parses correctly in perl, being equivalent to C<my $x : = 42>
+(applying an empty attribute list to C<$x>). This useless
+construct is now deprecated, so C<:=> can be reclaimed as a new
+operator in the future.
+
 =item Use of freed value in iteration
 
 (F) Perhaps you modified the iterated array within the loop?
@@ -5094,8 +5117,8 @@ executed, so its $a is not available for capture.
 
 =item Variable "%s" is not imported%s
 
-(F) While "use strict" in effect, you referred to a global variable that
-you apparently thought was imported from another module, because
+(W misc) With "use strict" in effect, you referred to a global variable
+that you apparently thought was imported from another module, because
 something else of the same name (usually a subroutine) is exported by
 that module.  It usually means you put the wrong funny character on the
 front of your variable.

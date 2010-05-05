@@ -57,6 +57,10 @@ tie.
 #  include <sys/pstat.h>
 #endif
 
+#ifdef HAS_PRCTL_SET_NAME
+#  include <sys/prctl.h>
+#endif
+
 #if defined(HAS_SIGACTION) && defined(SA_SIGINFO)
 Signal_t Perl_csighandler(int sig, siginfo_t *, void *);
 #else
@@ -174,6 +178,8 @@ S_is_container_magic(const MAGIC *mg)
     case PERL_MAGIC_arylen_p:
     case PERL_MAGIC_rhash:
     case PERL_MAGIC_symtab:
+    case PERL_MAGIC_tied: /* treat as value, so 'local @tied' isn't tied */
+    case PERL_MAGIC_tiedscalar: /* so 'local $scalar' isn't tied */
 	return 0;
     default:
 	return 1;
@@ -193,7 +199,7 @@ Perl_mg_get(pTHX_ SV *sv)
 {
     dVAR;
     const I32 mgs_ix = SSNEW(sizeof(MGS));
-    const bool was_temp = (bool)SvTEMP(sv);
+    const bool was_temp = cBOOL(SvTEMP(sv));
     bool have_new = 0;
     MAGIC *newmg, *head, *cur, *mg;
     /* guard against sv having being freed midway by holding a private
@@ -991,8 +997,10 @@ Perl_magic_get(pTHX_ SV *sv, MAGIC *mg)
 	}
 	break;
     case '^':
-	if (GvIOp(PL_defoutgv))
-	    s = IoTOP_NAME(GvIOp(PL_defoutgv));
+	if (!isGV_with_GP(PL_defoutgv))
+	    s = "";
+	else if (GvIOp(PL_defoutgv))
+		s = IoTOP_NAME(GvIOp(PL_defoutgv));
 	if (s)
 	    sv_setpv(sv,s);
 	else {
@@ -1001,22 +1009,24 @@ Perl_magic_get(pTHX_ SV *sv, MAGIC *mg)
 	}
 	break;
     case '~':
-	if (GvIOp(PL_defoutgv))
+	if (!isGV_with_GP(PL_defoutgv))
+	    s = "";
+	else if (GvIOp(PL_defoutgv))
 	    s = IoFMT_NAME(GvIOp(PL_defoutgv));
 	if (!s)
 	    s = GvENAME(PL_defoutgv);
 	sv_setpv(sv,s);
 	break;
     case '=':
-	if (GvIOp(PL_defoutgv))
+	if (GvIO(PL_defoutgv))
 	    sv_setiv(sv, (IV)IoPAGE_LEN(GvIOp(PL_defoutgv)));
 	break;
     case '-':
-	if (GvIOp(PL_defoutgv))
+	if (GvIO(PL_defoutgv))
 	    sv_setiv(sv, (IV)IoLINES_LEFT(GvIOp(PL_defoutgv)));
 	break;
     case '%':
-	if (GvIOp(PL_defoutgv))
+	if (GvIO(PL_defoutgv))
 	    sv_setiv(sv, (IV)IoPAGE(GvIOp(PL_defoutgv)));
 	break;
     case ':':
@@ -1027,7 +1037,7 @@ Perl_magic_get(pTHX_ SV *sv, MAGIC *mg)
 	sv_setiv(sv, (IV)CopARYBASE_get(PL_curcop));
 	break;
     case '|':
-	if (GvIOp(PL_defoutgv))
+	if (GvIO(PL_defoutgv))
 	    sv_setiv(sv, (IV)(IoFLAGS(GvIOp(PL_defoutgv)) & IOf_FLUSH) != 0 );
 	break;
     case '\\':
@@ -1634,55 +1644,110 @@ Perl_magic_setnkeys(pTHX_ SV *sv, MAGIC *mg)
     return 0;
 }
 
-/* caller is responsible for stack switching/cleanup */
-STATIC int
-S_magic_methcall(pTHX_ SV *sv, const MAGIC *mg, const char *meth, I32 flags, int n, SV *val)
+/*
+=for apidoc magic_methcall
+
+Invoke a magic method (like FETCH).
+
+* sv and mg are the tied thinggy and the tie magic;
+* meth is the name of the method to call;
+* argc, arg1, arg2 are the number of args (in addition to $self) to pass to
+  the method, and the args themselves
+* flags:
+    G_DISCARD:     invoke method with G_DISCARD flag and don't return a value
+    G_UNDEF_FILL:  fill the stack with argc pointers to PL_sv_undef;
+                   ignore arg1 and arg2.
+
+Returns the SV (if any) returned by the method, or NULL on failure.
+
+
+=cut
+*/
+
+SV*
+Perl_magic_methcall(pTHX_ SV *sv, const MAGIC *mg, const char *meth, U32 flags,
+		    U32 argc, ...)
 {
     dVAR;
     dSP;
+    SV* ret = NULL;
 
     PERL_ARGS_ASSERT_MAGIC_METHCALL;
 
+    ENTER;
+    PUSHSTACKi(PERLSI_MAGIC);
     PUSHMARK(SP);
-    EXTEND(SP, n);
+
+    EXTEND(SP, argc+1);
     PUSHs(SvTIED_obj(sv, mg));
-    if (n > 1) {
-	if (mg->mg_ptr) {
-	    if (mg->mg_len >= 0)
-		mPUSHp(mg->mg_ptr, mg->mg_len);
-	    else if (mg->mg_len == HEf_SVKEY)
-		PUSHs(MUTABLE_SV(mg->mg_ptr));
+    if (flags & G_UNDEF_FILL) {
+	while (argc--) {
+	    PUSHs(&PL_sv_undef);
 	}
-	else if (mg->mg_type == PERL_MAGIC_tiedelem) {
-	    mPUSHi(mg->mg_len);
-	}
-    }
-    if (n > 2) {
-	PUSHs(val);
+    } else if (argc > 0) {
+	va_list args;
+	va_start(args, argc);
+
+	do {
+	    SV *const sv = va_arg(args, SV *);
+	    PUSHs(sv);
+	} while (--argc);
+
+	va_end(args);
     }
     PUTBACK;
+    if (flags & G_DISCARD) {
+	call_method(meth, G_SCALAR|G_DISCARD);
+    }
+    else {
+	if (call_method(meth, G_SCALAR))
+	    ret = *PL_stack_sp--;
+    }
+    POPSTACK;
+    LEAVE;
+    return ret;
+}
 
-    return call_method(meth, flags);
+
+/* wrapper for magic_methcall that creates the first arg */
+
+STATIC SV*
+S_magic_methcall1(pTHX_ SV *sv, const MAGIC *mg, const char *meth, U32 flags,
+    int n, SV *val)
+{
+    dVAR;
+    SV* arg1 = NULL;
+
+    PERL_ARGS_ASSERT_MAGIC_METHCALL1;
+
+    if (mg->mg_ptr) {
+	if (mg->mg_len >= 0) {
+	    arg1 = newSVpvn_flags(mg->mg_ptr, mg->mg_len, SVs_TEMP);
+	}
+	else if (mg->mg_len == HEf_SVKEY)
+	    arg1 = MUTABLE_SV(mg->mg_ptr);
+    }
+    else if (mg->mg_type == PERL_MAGIC_tiedelem) {
+	arg1 = newSViv((IV)(mg->mg_len));
+	sv_2mortal(arg1);
+    }
+    if (!arg1) {
+	return Perl_magic_methcall(aTHX_ sv, mg, meth, flags, n - 1, val);
+    }
+    return Perl_magic_methcall(aTHX_ sv, mg, meth, flags, n, arg1, val);
 }
 
 STATIC int
 S_magic_methpack(pTHX_ SV *sv, const MAGIC *mg, const char *meth)
 {
-    dVAR; dSP;
+    dVAR;
+    SV* ret;
 
     PERL_ARGS_ASSERT_MAGIC_METHPACK;
 
-    ENTER;
-    SAVETMPS;
-    PUSHSTACKi(PERLSI_MAGIC);
-
-    if (magic_methcall(sv, mg, meth, G_SCALAR, 2, NULL)) {
-	sv_setsv(sv, *PL_stack_sp--);
-    }
-
-    POPSTACK;
-    FREETMPS;
-    LEAVE;
+    ret = magic_methcall1(sv, mg, meth, 0, 1, NULL);
+    if (ret)
+	sv_setsv(sv, ret);
     return 0;
 }
 
@@ -1691,7 +1756,7 @@ Perl_magic_getpack(pTHX_ SV *sv, MAGIC *mg)
 {
     PERL_ARGS_ASSERT_MAGIC_GETPACK;
 
-    if (mg->mg_ptr)
+    if (mg->mg_type == PERL_MAGIC_tiedelem)
 	mg->mg_flags |= MGf_GSKIP;
     magic_methpack(sv,mg,"FETCH");
     return 0;
@@ -1700,15 +1765,32 @@ Perl_magic_getpack(pTHX_ SV *sv, MAGIC *mg)
 int
 Perl_magic_setpack(pTHX_ SV *sv, MAGIC *mg)
 {
-    dVAR; dSP;
+    dVAR;
+    MAGIC *tmg;
+    SV    *val;
 
     PERL_ARGS_ASSERT_MAGIC_SETPACK;
 
-    ENTER;
-    PUSHSTACKi(PERLSI_MAGIC);
-    magic_methcall(sv, mg, "STORE", G_SCALAR|G_DISCARD, 3, sv);
-    POPSTACK;
-    LEAVE;
+    /* in the code C<$tied{foo} = $val>, the "thing" that gets passed to
+     * STORE() is not $val, but rather a PVLV (the sv in this call), whose
+     * public flags indicate its value based on copying from $val. Doing
+     * mg_set() on the PVLV temporarily does SvMAGICAL_off(), then calls us.
+     * So STORE()'s $_[2] arg is a temporarily disarmed PVLV. This goes
+     * wrong if $val happened to be tainted, as sv hasn't got magic
+     * enabled, even though taint magic is in the chain. In which case,
+     * fake up a temporary tainted value (this is easier than temporarily
+     * re-enabling magic on sv). */
+
+    if (PL_tainting && (tmg = mg_find(sv, PERL_MAGIC_taint))
+	&& (tmg->mg_len & 1))
+    {
+	val = sv_mortalcopy(sv);
+	SvTAINTED_on(val);
+    }
+    else
+	val = sv;
+
+    magic_methcall1(sv, mg, "STORE", G_DISCARD, 2, val);
     return 0;
 }
 
@@ -1724,69 +1806,44 @@ Perl_magic_clearpack(pTHX_ SV *sv, MAGIC *mg)
 U32
 Perl_magic_sizepack(pTHX_ SV *sv, MAGIC *mg)
 {
-    dVAR; dSP;
+    dVAR;
     I32 retval = 0;
+    SV* retsv;
 
     PERL_ARGS_ASSERT_MAGIC_SIZEPACK;
 
-    ENTER;
-    SAVETMPS;
-    PUSHSTACKi(PERLSI_MAGIC);
-    if (magic_methcall(sv, mg, "FETCHSIZE", G_SCALAR, 2, NULL)) {
-	sv = *PL_stack_sp--;
-	retval = SvIV(sv)-1;
+    retsv = magic_methcall1(sv, mg, "FETCHSIZE", 0, 1, NULL);
+    if (retsv) {
+	retval = SvIV(retsv)-1;
 	if (retval < -1)
 	    Perl_croak(aTHX_ "FETCHSIZE returned a negative value");
     }
-    POPSTACK;
-    FREETMPS;
-    LEAVE;
     return (U32) retval;
 }
 
 int
 Perl_magic_wipepack(pTHX_ SV *sv, MAGIC *mg)
 {
-    dVAR; dSP;
+    dVAR;
 
     PERL_ARGS_ASSERT_MAGIC_WIPEPACK;
 
-    ENTER;
-    PUSHSTACKi(PERLSI_MAGIC);
-    PUSHMARK(SP);
-    XPUSHs(SvTIED_obj(sv, mg));
-    PUTBACK;
-    call_method("CLEAR", G_SCALAR|G_DISCARD);
-    POPSTACK;
-    LEAVE;
-
+    Perl_magic_methcall(aTHX_ sv, mg, "CLEAR", G_DISCARD, 0);
     return 0;
 }
 
 int
 Perl_magic_nextpack(pTHX_ SV *sv, MAGIC *mg, SV *key)
 {
-    dVAR; dSP;
-    const char * const meth = SvOK(key) ? "NEXTKEY" : "FIRSTKEY";
+    dVAR;
+    SV* ret;
 
     PERL_ARGS_ASSERT_MAGIC_NEXTPACK;
 
-    ENTER;
-    SAVETMPS;
-    PUSHSTACKi(PERLSI_MAGIC);
-    PUSHMARK(SP);
-    EXTEND(SP, 2);
-    PUSHs(SvTIED_obj(sv, mg));
-    if (SvOK(key))
-	PUSHs(key);
-    PUTBACK;
-
-    if (call_method(meth, G_SCALAR))
-	sv_setsv(key, *PL_stack_sp--);
-
-    POPSTACK;
-    FREETMPS;
-    LEAVE;
+    ret = SvOK(key) ? Perl_magic_methcall(aTHX_ sv, mg, "NEXTKEY", 0, 1, key)
+	: Perl_magic_methcall(aTHX_ sv, mg, "FIRSTKEY", 0, 0);
+    if (ret)
+	sv_setsv(key,ret);
     return 0;
 }
 
@@ -1801,7 +1858,7 @@ Perl_magic_existspack(pTHX_ SV *sv, const MAGIC *mg)
 SV *
 Perl_magic_scalarpack(pTHX_ HV *hv, MAGIC *mg)
 {
-    dVAR; dSP;
+    dVAR;
     SV *retval;
     SV * const tied = SvTIED_obj(MUTABLE_SV(hv), mg);
     HV * const pkg = SvSTASH((const SV *)SvRV(tied));
@@ -1821,19 +1878,9 @@ Perl_magic_scalarpack(pTHX_ HV *hv, MAGIC *mg)
     }
    
     /* there is a SCALAR method that we can call */
-    ENTER;
-    PUSHSTACKi(PERLSI_MAGIC);
-    PUSHMARK(SP);
-    EXTEND(SP, 1);
-    PUSHs(tied);
-    PUTBACK;
-
-    if (call_method("SCALAR", G_SCALAR))
-        retval = *PL_stack_sp--; 
-    else
+    retval = Perl_magic_methcall(aTHX_ MUTABLE_SV(hv), mg, "SCALAR", 0, 0);
+    if (!retval)
 	retval = &PL_sv_undef;
-    POPSTACK;
-    LEAVE;
     return retval;
 }
 
@@ -2334,7 +2381,7 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 	sv_setsv(PL_bodytarget, sv);
 	break;
     case '\003':	/* ^C */
-	PL_minus_c = (bool)SvIV(sv);
+	PL_minus_c = cBOOL(SvIV(sv));
 	break;
 
     case '\004':	/* ^D */
@@ -2502,29 +2549,37 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 	    IoLINES(GvIOp(PL_last_in_gv)) = SvIV(sv);
 	break;
     case '^':
-	Safefree(IoTOP_NAME(GvIOp(PL_defoutgv)));
-	s = IoTOP_NAME(GvIOp(PL_defoutgv)) = savesvpv(sv);
-	IoTOP_GV(GvIOp(PL_defoutgv)) =  gv_fetchsv(sv, GV_ADD, SVt_PVIO);
+	if (isGV_with_GP(PL_defoutgv)) {
+	    Safefree(IoTOP_NAME(GvIOp(PL_defoutgv)));
+	    s = IoTOP_NAME(GvIOp(PL_defoutgv)) = savesvpv(sv);
+	    IoTOP_GV(GvIOp(PL_defoutgv)) =  gv_fetchsv(sv, GV_ADD, SVt_PVIO);
+	}
 	break;
     case '~':
-	Safefree(IoFMT_NAME(GvIOp(PL_defoutgv)));
-	s = IoFMT_NAME(GvIOp(PL_defoutgv)) = savesvpv(sv);
-	IoFMT_GV(GvIOp(PL_defoutgv)) =  gv_fetchsv(sv, GV_ADD, SVt_PVIO);
+	if (isGV_with_GP(PL_defoutgv)) {
+	    Safefree(IoFMT_NAME(GvIOp(PL_defoutgv)));
+	    s = IoFMT_NAME(GvIOp(PL_defoutgv)) = savesvpv(sv);
+	    IoFMT_GV(GvIOp(PL_defoutgv)) =  gv_fetchsv(sv, GV_ADD, SVt_PVIO);
+	}
 	break;
     case '=':
-	IoPAGE_LEN(GvIOp(PL_defoutgv)) = (SvIV(sv));
+	if (isGV_with_GP(PL_defoutgv))
+	    IoPAGE_LEN(GvIOp(PL_defoutgv)) = (SvIV(sv));
 	break;
     case '-':
-	IoLINES_LEFT(GvIOp(PL_defoutgv)) = (SvIV(sv));
-	if (IoLINES_LEFT(GvIOp(PL_defoutgv)) < 0L)
-	    IoLINES_LEFT(GvIOp(PL_defoutgv)) = 0L;
+	if (isGV_with_GP(PL_defoutgv)) {
+	    IoLINES_LEFT(GvIOp(PL_defoutgv)) = (SvIV(sv));
+	    if (IoLINES_LEFT(GvIOp(PL_defoutgv)) < 0L)
+		IoLINES_LEFT(GvIOp(PL_defoutgv)) = 0L;
+	}
 	break;
     case '%':
-	IoPAGE(GvIOp(PL_defoutgv)) = (SvIV(sv));
+	if (isGV_with_GP(PL_defoutgv))
+	    IoPAGE(GvIOp(PL_defoutgv)) = (SvIV(sv));
 	break;
     case '|':
 	{
-	    IO * const io = GvIOp(PL_defoutgv);
+	    IO * const io = GvIO(PL_defoutgv);
 	    if(!io)
 	      break;
 	    if ((SvIV(sv)) == 0)
@@ -2612,7 +2667,6 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 #endif
 #endif
 	PL_uid = PerlProc_getuid();
-	PL_tainting |= (PL_uid && (PL_euid != PL_uid || PL_egid != PL_gid));
 	break;
     case '>':
 	PL_euid = SvIV(sv);
@@ -2639,7 +2693,6 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 #endif
 #endif
 	PL_euid = PerlProc_geteuid();
-	PL_tainting |= (PL_uid && (PL_euid != PL_uid || PL_egid != PL_gid));
 	break;
     case '(':
 	PL_gid = SvIV(sv);
@@ -2666,7 +2719,6 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 #endif
 #endif
 	PL_gid = PerlProc_getgid();
-	PL_tainting |= (PL_uid && (PL_euid != PL_uid || PL_egid != PL_gid));
 	break;
     case ')':
 #ifdef HAS_SETGROUPS
@@ -2728,7 +2780,6 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 #endif
 #endif
 	PL_egid = PerlProc_getegid();
-	PL_tainting |= (PL_uid && (PL_euid != PL_uid || PL_egid != PL_gid));
 	break;
     case ':':
 	PL_chopset = SvPV_force(sv,len);
@@ -2794,6 +2845,13 @@ Perl_magic_set(pTHX_ SV *sv, MAGIC *mg)
 	    PL_origargv[0][PL_origalen-1] = 0;
 	    for (i = 1; i < PL_origargc; i++)
 		PL_origargv[i] = 0;
+#ifdef HAS_PRCTL_SET_NAME
+	    /* Set the legacy process name in addition to the POSIX name on Linux */
+	    if (prctl(PR_SET_NAME, (unsigned long)s, 0, 0, 0) != 0) {
+		/* diag_listed_as: SKIPME */
+		Perl_croak(aTHX_ "Can't set $0 with prctl(): %s", Strerror(errno));
+	    }
+#endif
 	}
 #endif
 	UNLOCK_DOLLARZERO_MUTEX;
@@ -2948,7 +3006,7 @@ Perl_sighandler(int sig)
 	(void)rsignal(sig, PL_csighandlerp);
 #endif
 #endif /* !PERL_MICRO */
-	Perl_die(aTHX_ NULL);
+	die_sv(ERRSV);
     }
 cleanup:
     if (flags & 1)
@@ -3015,13 +3073,12 @@ S_restore_magic(pTHX_ const void *p)
      */
     if (PL_savestack_ix == mgs->mgs_ss_ix)
     {
-	I32 popval = SSPOPINT;
+	UV popval = SSPOPUV;
         assert(popval == SAVEt_DESTRUCTOR_X);
         PL_savestack_ix -= 2;
-	popval = SSPOPINT;
-        assert(popval == SAVEt_ALLOC);
-	popval = SSPOPINT;
-        PL_savestack_ix -= popval;
+	popval = SSPOPUV;
+        assert((popval & SAVE_MASK) == SAVEt_ALLOC);
+        PL_savestack_ix -= popval >> SAVE_TIGHT_SHIFT;
     }
 
 }

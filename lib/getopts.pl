@@ -8,10 +8,6 @@
 #
 # Suggested alternatives: Getopt::Long  or  Getopt::Std
 
-warn( "The 'getopts.pl' legacy library is deprecated and will be"
-      . " removed in the next major release of perl. Please use the"
-      . " Getopt::Long or Getopt::Std module instead." );
-
 ;# Usage:
 ;#      do Getopts('a:bc');  # -a takes arg. -b & -c not. Sets opt_* as a
 ;#                           #  side effect.
@@ -20,13 +16,12 @@ sub Getopts {
     local($argumentative) = @_;
     local(@args,$_,$first,$rest);
     local($errs) = 0;
-    local($[) = 0;
 
     @args = split( / */, $argumentative );
     while(@ARGV && ($_ = $ARGV[0]) =~ /^-(.)(.*)/) {
 		($first,$rest) = ($1,$2);
 		$pos = index($argumentative,$first);
-		if($pos >= $[) {
+		if($pos >= 0) {
 			if($args[$pos+1] eq ':') {
 				shift(@ARGV);
 				if($rest eq '') {

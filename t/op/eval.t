@@ -6,7 +6,7 @@ BEGIN {
     require './test.pl';
 }
 
-print "1..105\n";
+print "1..106\n";
 
 eval 'print "ok 1\n";';
 
@@ -526,6 +526,8 @@ if (eval "use Devel::Peek; 1;") {
         my $in = <IN>;
         my ($first, $second) = split (/\*\*\*\*\*\*\n/, $in, 2);
         $first =~ s/,pNOK//;
+        s/ PV = 0x[0-9a-f]+/ PV = 0x/ foreach $first, $second;
+        s/ LEN = [0-9]+/ LEN = / foreach $first, $second;
         $ok = 1 if ($first eq $second);
       }
     }
@@ -594,3 +596,11 @@ eval {
 };
 print "ok\n";
 EOP
+
+    fresh_perl_is(<<'EOP', "ok\n", undef, 'segfault on syntax errors in block evals');
+# localize the hits hash so the eval ends up with the pad offset of a copy of it in its targ
+BEGIN { $^H |= 0x00020000 }
+eval q{ eval { + } };
+print "ok\n";
+EOP
+

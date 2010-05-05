@@ -18,15 +18,10 @@
 
 package abbrev;
 
-warn( "The 'abbrev.pl' legacy library is deprecated and will be"
-      . " removed in the next major release of perl. Please use the"
-      . " Text::Abbrev module instead." );
-
 sub main'abbrev {
     local(*domain) = @_;
     shift(@_);
     @cmp = @_;
-    local($[) = 0;
     foreach $name (@_) {
 	@extra = split(//,$name);
 	$abbrev = shift(@extra);

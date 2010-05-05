@@ -11,10 +11,6 @@
 # Suggested alternative: Term::Cap
 #
 
-warn( "The 'termcap.pl' legacy library is deprecated and will be"
-      . " removed in the next major release of perl. Please use the"
-      . " Term::Cap module instead." );
-
 ;#
 ;# Usage:
 ;#	require 'ioctl.pl';
@@ -159,8 +155,8 @@ sub Tgoto {
 	}
 	elsif ($code eq '>') {
 	    ($code,$tmp,$string) = unpack("CCa99",$string);
-	    if ($tmp[$[] > $code) {
-		$tmp[$[] += $tmp;
+	    if ($tmp[0] > $code) {
+		$tmp[0] += $tmp;
 	    }
 	}
 	elsif ($code eq '2') {

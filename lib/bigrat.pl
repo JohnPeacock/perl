@@ -11,10 +11,6 @@ require "bigint.pl";
 #
 # Arbitrary size rational math package
 
-warn( "The 'bigrat.pl' legacy library is deprecated and will be"
-      . " removed in the next major release of perl. Please use the"
-      . " bigrat module instead." );
-
 # by Mark Biggar
 #
 # Input values to these routines consist of strings of the form 
@@ -75,7 +71,7 @@ sub norm { #(bint, bint) return rat_num
 	    $num = &'bnorm($num);
 	    $dom = &'bnorm($dom);
 	}
-	substr($dom,$[,1) = '';
+	substr($dom,0,1) = '';
 	"$num/$dom";
     }
 }
@@ -90,42 +86,42 @@ sub main'rneg { #(rat_num) return rat_num
 # absolute value
 sub main'rabs { #(rat_num) return $rat_num
     local($_) = &'rnorm(@_);
-    substr($_,$[,1) = '+' unless $_ eq 'NaN';
+    substr($_,0,1) = '+' unless $_ eq 'NaN';
     $_;
 }
 
 # multipication
 sub main'rmul { #(rat_num, rat_num) return rat_num
-    local($xn,$xd) = split('/',&'rnorm($_[$[]));
-    local($yn,$yd) = split('/',&'rnorm($_[$[+1]));
+    local($xn,$xd) = split('/',&'rnorm($_[0]));
+    local($yn,$yd) = split('/',&'rnorm($_[1]));
     &norm(&'bmul($xn,$yn),&'bmul($xd,$yd));
 }
 
 # division
 sub main'rdiv { #(rat_num, rat_num) return rat_num
-    local($xn,$xd) = split('/',&'rnorm($_[$[]));
-    local($yn,$yd) = split('/',&'rnorm($_[$[+1]));
+    local($xn,$xd) = split('/',&'rnorm($_[0]));
+    local($yn,$yd) = split('/',&'rnorm($_[1]));
     &norm(&'bmul($xn,$yd),&'bmul($xd,$yn));
 }
 
 # addition
 sub main'radd { #(rat_num, rat_num) return rat_num
-    local($xn,$xd) = split('/',&'rnorm($_[$[]));
-    local($yn,$yd) = split('/',&'rnorm($_[$[+1]));
+    local($xn,$xd) = split('/',&'rnorm($_[0]));
+    local($yn,$yd) = split('/',&'rnorm($_[1]));
     &norm(&'badd(&'bmul($xn,$yd),&'bmul($yn,$xd)),&'bmul($xd,$yd));
 }
 
 # subtraction
 sub main'rsub { #(rat_num, rat_num) return rat_num
-    local($xn,$xd) = split('/',&'rnorm($_[$[]));
-    local($yn,$yd) = split('/',&'rnorm($_[$[+1]));
+    local($xn,$xd) = split('/',&'rnorm($_[0]));
+    local($yn,$yd) = split('/',&'rnorm($_[1]));
     &norm(&'bsub(&'bmul($xn,$yd),&'bmul($yn,$xd)),&'bmul($xd,$yd));
 }
 
 # comparison
 sub main'rcmp { #(rat_num, rat_num) return cond_code
-    local($xn,$xd) = split('/',&'rnorm($_[$[]));
-    local($yn,$yd) = split('/',&'rnorm($_[$[+1]));
+    local($xn,$xd) = split('/',&'rnorm($_[0]));
+    local($yn,$yd) = split('/',&'rnorm($_[1]));
     &bigint'cmp(&'bmul($xn,$yd),&'bmul($yn,$xd));
 }
 
@@ -143,7 +139,7 @@ sub main'rmod { #(rat_num) return (rat_num,rat_num)
 # square root by Newtons method.
 #   cycles specifies the number of iterations default: 5
 sub main'rsqrt { #(fnum_str[, cycles]) return fnum_str
-    local($x, $scale) = (&'rnorm($_[$[]), $_[$[+1]);
+    local($x, $scale) = (&'rnorm($_[0]), $_[1]);
     if ($x eq 'NaN') {
 	'NaN';
     } elsif ($x =~ /^-/) {

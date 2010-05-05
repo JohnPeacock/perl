@@ -10,10 +10,6 @@
 #
 # Suggested alternative: the POSIX ctime function
 
-warn( "The 'ctime.pl' legacy library is deprecated and will be"
-      . " removed in the next major release of perl. Please use the"
-      . " POSIX module (ctime function) instead." );
-
 ;#
 ;# Waldemar Kebsch, Federal Republic of Germany, November 1988
 ;# kebsch.pad@nixpbe.UUCP
@@ -39,7 +35,6 @@ sub ctime {
     package ctime;
 
     local($time) = @_;
-    local($[) = 0;
     local($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst);
 
     # Determine what time zone is in effect.

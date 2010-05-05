@@ -2,7 +2,7 @@
 use strict;
 use Text::Wrap;
 $Text::Wrap::columns = 80;
-my ($committer, $patch, $log,$date);
+my ($committer, $patch, $author, $date);
 use Getopt::Long;
 
 my ($rank, $percentage, $cumulative, $reverse, $ta, @authors, %authors,
@@ -17,13 +17,14 @@ my $result = GetOptions ("rank" => \$rank,            # rank authors
 
 if (!$result or (($rank||0) + ($ta||0) + (@authors ? 1 : 0) != 1) or !@ARGV) {
   die <<"EOS";
-$0 --rank Changelogs                        # rank authors by patches
-$0 --acknowledged <authors file> Changelogs # Display unacknowledged authors
-$0 --thanks-applied Changelogs            # ranks committers
+$0 --rank changes                           # rank authors by patches
+$0 --acknowledged <authors file> changes    # Display unacknowledged authors
+$0 --thanks-applied changes                 # ranks committers of others' patches
 $0 --percentage ...                         # show rankings as percentages
 $0 --cumulative ...                         # show rankings cumulatively
 $0 --reverse ...                            # show rankings in reverse
 Specify stdin as - if needs be. Remember that option names can be abbreviated.
+Generate changes with git log --pretty=fuller rev1..rev2
 EOS
 }
 
@@ -145,14 +146,16 @@ if (@authors) {
 
 my @lines = split(/^commit\s*/sm,join('',<>));
 for ( @lines) {
-    next if m/^$/;
+  next if m/^$/;
   next if m/^(\S*?)^Merge:/ism; # skip merge commits
-  if (m/^(.*?)^Author:\s*(.*?)^Date:\s*(.*?)^(.*)$/gism) {
+if (m/^(.*?)^Author:\s*(.*?)^AuthorDate:\s*(.*?)^Commit:\s*(.*?)^(.*)$/gism) {
     # new patch
-    ($patch, $committer, $date,$log) = ($1,$2,$3,$4);
+    ($patch, $author, $date, $committer) = ($1,$2,$3,$4);
+    chomp($author);
+    unless ($author) { die $_}
     chomp($committer);
     unless ($committer) { die $_}
-    &process ($committer, $patch, $log);
+    &process($committer, $patch, $author);
 } else { die "XXX $_ did not match";}
 }
 
@@ -206,22 +209,17 @@ sub display_ordered {
 }
 
 sub process {
-  my ($committer, $patch, $log) = @_;
+  my ($committer, $patch, $author) = @_;
+  return unless $author;
   return unless $committer;
-  my @authors = $log =~ /From:\s+.*?([^"\@ \t\n<>]+\@[^"\@ \t\n<>]+)/gm;
 
-  if (@authors) {
-    foreach my $addr (@authors) {
+  $author = _raw_address($author);
+  $patchers{$author}++;
 
-      $patchers{_raw_address($addr)}++;
-    }
-    # print "$patch: @authors\n";
-    $committers{_raw_address($committer)}++;
-  } else {
-      # print "$patch: $committer\n";
-    # Not entirely fair as this means that the maint pumpking scores for
-    # everything intergrated that wasn't a third party patch in blead
-    $patchers{_raw_address($committer)}++;
+  $committer = _raw_address($committer);
+  if ($committer ne $author) {
+    # separate commit credit only if committing someone else's patch
+    $committers{$committer}++;
   }
 }
 
@@ -232,6 +230,8 @@ sub _raw_address {
     $addr =~ s/^\s*(.*)\s*<\s*(.*?)\s*>.*$/$2/ ;
      $real_name = $1;
     }
+    $addr =~ s/\[mailto://;
+    $addr =~ s/\]//;
     $addr = lc $addr;
     $addr = $map{$addr} || $addr;
     $addr =~ s/\\100/@/g;  # Sometimes, there are encoded @ signs in the git log.
@@ -451,6 +451,7 @@ david\100kineticode.com                 david\100wheeler.com
 +                                       david\100wheeler.net
 dennis\100booking.com                   dennis\100camel.ams6.corp.booking.com
 dev-perl\100pimb.org                    knew-p5p\100pimb.org
++                                       lists-p5p\100pimb.org
 djberg86\100attbi.com                   djberg96\100attbi.com
 domo\100computer.org                    shouldbedomo\100mac.com
 +                                       domo\100slipper.ip.lu
@@ -548,6 +549,7 @@ laszlo.molnar\100eth.ericsson.se        molnarl\100cdata.tvnet.hu
 +                                       ml1050\100freemail.hu
 lewart\100uiuc.edu                      lewart\100vadds.cvm.uiuc.edu    
 +                                       d-lewart\100uiuc.edu
+lkundrak\100v3.sk                      lubo.rintel\100gooddata.com
 lstein\100cshl.org                      lstein\100formaggio.cshl.org
 +                                       lstein\100genome.wi.mit.edu
 lupe\100lupe-christoph.de               lupe\100alanya.m.isar.de
@@ -651,6 +653,7 @@ rmgiroux\100acm.org                     rmgiroux\100hotmail.com
 rmbarker\100cpan.org                    rmb1\100cise.npl.co.uk
 +                                       robin.barker\100npl.co.uk
 +                                       rmb\100cise.npl.co.uk
++                                       robin\100spade-ubuntu.(none)
 robertmay\100cpan.org                   rob\100themayfamily.me.uk
 roberto\100keltia.freenix.fr            roberto\100eurocontrol.fr
 robin\100cpan.org                       robin\100kitsite.com
